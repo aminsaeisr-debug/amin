@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.abs
 import kotlin.math.max
+import kotlin.math.min
 
 /**
  * Real-time recognition engine. CameraX YUV frames go directly to ML Kit, while
