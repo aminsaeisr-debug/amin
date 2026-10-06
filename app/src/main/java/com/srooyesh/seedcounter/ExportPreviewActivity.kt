@@ -1,7 +1,6 @@
 package com.srooyesh.seedcounter
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.widget.Button
 import android.widget.LinearLayout
@@ -13,7 +12,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.appbar.MaterialToolbar
-import com.google.android.material.card.MaterialCardView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -67,15 +65,21 @@ class ExportPreviewActivity : AppCompatActivity() {
 
     private fun openExcelFile() {
         lifecycleScope.launch {
-            val result = withContext(Dispatchers.IO) { ExcelExporter(this@ExportPreviewActivity).createReportFile() }
+            val result = withContext(Dispatchers.IO) {
+                runCatching { ExcelExporter(this@ExportPreviewActivity).createReportFile() }
+            }
             if (result.isFailure) {
                 toast(result.exceptionOrNull()?.message ?: getString(R.string.excel_error))
+                return@launch
+            }
+            val file = result.getOrNull() ?: run {
+                toast(getString(R.string.excel_error))
                 return@launch
             }
             val uri = FileProvider.getUriForFile(
                 this@ExportPreviewActivity,
                 "${packageName}.provider",
-                result.getOrThrow()
+                file
             )
             val intent = Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(uri, ExcelExporter.MIME_XLSX)
@@ -91,9 +95,14 @@ class ExportPreviewActivity : AppCompatActivity() {
 
     private fun shareExcelFile() {
         lifecycleScope.launch {
-            val result = withContext(Dispatchers.IO) { ExcelExporter(this@ExportPreviewActivity).createShareIntent() }
-            if (result.isSuccess) startActivity(result.getOrThrow())
-            else toast(result.exceptionOrNull()?.message ?: getString(R.string.excel_error))
+            val result = withContext(Dispatchers.IO) {
+                runCatching { ExcelExporter(this@ExportPreviewActivity).createShareIntent() }
+            }
+            if (result.isSuccess) {
+                result.getOrNull()?.let { startActivity(it) }
+            } else {
+                toast(result.exceptionOrNull()?.message ?: getString(R.string.excel_error))
+            }
         }
     }
 
