@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background"
+    android:fillViewport="true"
+    android:layoutDirection="rtl">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layoutDirection="rtl"
+        android:orientation="vertical">
+
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/settingsToolbar"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:background="@color/primary"
+            android:title="@string/settings_title"
+            android:titleTextColor="@android:color/white"
+            app:navigationIcon="@drawable/ic_arrow_back" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="14dp">
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardBackgroundColor="@color/primary_soft"
+                app:cardCornerRadius="18dp"
+                app:strokeColor="@color/border"
+                app:strokeWidth="1dp">
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:padding="15dp"
+                    android:text="@string/settings_subtitle"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp" />
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                app:cardBackgroundColor="@color/surface"
+                app:cardCornerRadius="20dp"
+                app:strokeColor="@color/border"
+                app:strokeWidth="1dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+                    <TextView android:textAppearance="@style/TextAppearance.SeedMas.SectionTitle" android:text="@string/settings_scan" />
+                    <TextView android:textAppearance="@style/TextAppearance.SeedMas.SectionHelper" android:text="@string/settings_scan_help" />
+
+                    <TextView style="@style/SettingsLabel" android:text="@string/scan_mode_label" />
+                    <Spinner android:id="@+id/scanMode" android:layout_width="match_parent" android:layout_height="48dp" />
+                    <TextView style="@style/SettingsLabel" android:text="@string/recognition_mode_label" />
+                    <Spinner android:id="@+id/recognitionMode" android:layout_width="match_parent" android:layout_height="48dp" />
+                    <TextView style="@style/SettingsLabel" android:text="@string/number_scan_mode_label" />
+                    <Spinner android:id="@+id/numberScanMode" android:layout_width="match_parent" android:layout_height="48dp" />
+                    <TextView android:textAppearance="@style/TextAppearance.SeedMas.SectionHelper" android:text="@string/number_scan_mode_help" />
+                    <TextView style="@style/SettingsLabel" android:text="@string/scan_quality_label" />
+                    <Spinner android:id="@+id/scanQuality" android:layout_width="match_parent" android:layout_height="48dp" />
+                    <TextView style="@style/SettingsLabel" android:text="@string/scan_window_label" />
+                    <Spinner android:id="@+id/scanWindow" android:layout_width="match_parent" android:layout_height="48dp" />
+                    <TextView style="@style/SettingsLabel" android:text="@string/stable_reads_label" />
+                    <Spinner android:id="@+id/stableReads" android:layout_width="match_parent" android:layout_height="48dp" />
+
+                    <TextView style="@style/SettingsLabel" android:text="@string/number_length_label" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+                        <NumberPicker android:id="@+id/minDigits" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:padding="14dp"
+                            android:text="تا"
+                            android:textColor="@color/text_primary"
+                            android:textStyle="bold" />
+                        <NumberPicker android:id="@+id/maxDigits" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" />
+                    </LinearLayout>
+                    <TextView android:textAppearance="@style/TextAppearance.SeedMas.SectionHelper" android:text="@string/number_length_help" />
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/autoZoom"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/auto_zoom" />
+                    <TextView android:textAppearance="@style/TextAppearance.SeedMas.SectionHelper" android:text="@string/auto_zoom_help" />
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/autoFocus"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/auto_focus_setting" />
+                    <TextView android:textAppearance="@style/TextAppearance.SeedMas.SectionHelper" android:text="@string/auto_focus_help" />
+                    <TextView style="@style/SettingsLabel" android:text="@string/flash_default_label" />
+                    <Spinner android:id="@+id/defaultFlash" android:layout_width="match_parent" android:layout_height="48dp" />
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/duplicateCheck"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/duplicate_check" />
+                    <TextView android:textAppearance="@style/TextAppearance.SeedMas.SectionHelper" android:text="@string/duplicate_check_help" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                app:cardBackgroundColor="@color/surface"
+                app:cardCornerRadius="20dp"
+                app:strokeColor="@color/border"
+                app:strokeWidth="1dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+                    <TextView android:textAppearance="@style/TextAppearance.SeedMas.SectionTitle" android:text="@string/settings_frame" />
+                    <TextView android:textAppearance="@style/TextAppearance.SeedMas.SectionHelper" android:text="@string/frame_slider_help" />
+                    <TextView android:id="@+id/frameWidthValue" style="@style/SettingsLabel" android:text="@string/frame_width_value_default" />
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/frameWidth"
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        app:stepSize="1"
+                        app:valueFrom="56"
+                        app:valueTo="96" />
+                    <TextView android:id="@+id/frameHeightValue" style="@style/SettingsLabel" android:text="@string/frame_height_value_default" />
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/frameHeight"
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        app:stepSize="1"
+                        app:valueFrom="12"
+                        app:valueTo="58" />
+                    <TextView android:textAppearance="@style/TextAppearance.SeedMas.SectionHelper" android:text="@string/frame_live_help" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/resetFrame"
+                        android:layout_width="match_parent"
+                        android:layout_height="50dp"
+                        android:layout_marginTop="7dp"
+                        android:text="@string/frame_reset"
+                        android:textAllCaps="false"
+                        app:cornerRadius="15dp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                app:cardBackgroundColor="@color/surface"
+                app:cardCornerRadius="20dp"
+                app:strokeColor="@color/border"
+                app:strokeWidth="1dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+                    <TextView android:textAppearance="@style/TextAppearance.SeedMas.SectionTitle" android:text="@string/settings_feedback" />
+                    <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/haptic" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/haptic" />
+                    <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/sound" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/sound" />
+                    <TextView android:textAppearance="@style/TextAppearance.SeedMas.SectionHelper" android:text="@string/sound_help" />
+                    <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/voiceGuidance" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/voice_guidance" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                app:cardBackgroundColor="@color/surface"
+                app:cardCornerRadius="20dp"
+                app:strokeColor="@color/border"
+                app:strokeWidth="1dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+                    <TextView android:textAppearance="@style/TextAppearance.SeedMas.SectionTitle" android:text="@string/settings_excel" />
+                    <TextView android:textAppearance="@style/TextAppearance.SeedMas.SectionHelper" android:text="@string/excel_settings_help" />
+                    <TextView style="@style/SettingsLabel" android:text="@string/date_output_label" />
+                    <RadioGroup android:id="@+id/dateOutput" android:layout_width="match_parent" android:layout_height="wrap_content">
+                        <RadioButton android:id="@+id/dateJalali" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/date_jalali" />
+                        <RadioButton android:id="@+id/dateGregorian" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/date_gregorian" />
+                        <RadioButton android:id="@+id/dateBoth" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/date_both" />
+                    </RadioGroup>
+                    <TextView style="@style/SettingsLabel" android:text="@string/columns_label" />
+                    <CheckBox android:id="@+id/outRow" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/out_row" />
+                    <CheckBox android:id="@+id/outVariety" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/out_variety" />
+                    <CheckBox android:id="@+id/outCustomer" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/out_customer" />
+                    <CheckBox android:id="@+id/outNumber" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/out_number" />
+                    <CheckBox android:id="@+id/outBarcode" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/out_barcode" />
+                    <CheckBox android:id="@+id/outTime" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/out_time" />
+                    <CheckBox android:id="@+id/outSession" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/out_session" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                app:cardBackgroundColor="@color/surface"
+                app:cardCornerRadius="20dp"
+                app:strokeColor="@color/border"
+                app:strokeWidth="1dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+                    <TextView android:textAppearance="@style/TextAppearance.SeedMas.SectionTitle" android:text="@string/settings_data" />
+                    <TextView android:textAppearance="@style/TextAppearance.SeedMas.SectionHelper" android:text="@string/data_help" />
+                    <com.google.android.material.button.MaterialButton android:id="@+id/backupNow" android:layout_width="match_parent" android:layout_height="50dp" android:layout_marginTop="7dp" android:text="@string/backup_now" android:textAllCaps="false" app:cornerRadius="15dp" />
+                    <com.google.android.material.button.MaterialButton android:id="@+id/restoreBackup" android:layout_width="match_parent" android:layout_height="50dp" android:layout_marginTop="6dp" android:text="@string/restore_backup" android:textAllCaps="false" app:cornerRadius="15dp" />
+                    <com.google.android.material.button.MaterialButton android:id="@+id/resetSettings" android:layout_width="match_parent" android:layout_height="50dp" android:layout_marginTop="6dp" android:text="@string/reset_settings" android:textAllCaps="false" app:cornerRadius="15dp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/saveSettings"
+                android:layout_width="match_parent"
+                android:layout_height="58dp"
+                android:layout_marginTop="12dp"
+                android:text="@string/save_settings"
+                android:textAllCaps="false"
+                android:textSize="17sp"
+                android:textStyle="bold"
+                app:backgroundTint="@color/success"
+                app:cornerRadius="17dp" />
+            <TextView
+                android:id="@+id/settingsFooterVersion"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:padding="14dp"
+                android:text="@string/settings_footer"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp" />
+        </LinearLayout>
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

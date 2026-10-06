@@ -1,0 +1,1 @@
+# seed-mas release rules
