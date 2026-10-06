@@ -135,17 +135,17 @@
                         android:id="@+id/frameWidth"
                         android:layout_width="match_parent"
                         android:layout_height="44dp"
-                        app:stepSize="1"
-                        app:valueFrom="56"
-                        app:valueTo="96" />
+                        android:stepSize="1"
+                        android:valueFrom="56"
+                        android:valueTo="96" />
                     <TextView android:id="@+id/frameHeightValue" style="@style/SettingsLabel" android:text="@string/frame_height_value_default" />
                     <com.google.android.material.slider.Slider
                         android:id="@+id/frameHeight"
                         android:layout_width="match_parent"
                         android:layout_height="44dp"
-                        app:stepSize="1"
-                        app:valueFrom="12"
-                        app:valueTo="58" />
+                        android:stepSize="1"
+                        android:valueFrom="12"
+                        android:valueTo="58" />
                     <TextView android:textAppearance="@style/TextAppearance.SeedMas.SectionHelper" android:text="@string/frame_live_help" />
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/resetFrame"
