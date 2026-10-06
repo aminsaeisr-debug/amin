@@ -42,7 +42,7 @@ data class AppSettings(
     /** Number grouping intelligence: SIMPLE reads contiguous digits; SMART joins irregular groups and recognizes separators. */
     val numberScanMode: NumberScanMode = NumberScanMode.SIMPLE,
     val minDigits: Int = 4,
-    val maxDigits: Int = 8,
+    val maxDigits: Int = 6,
     /** Kept for backup compatibility; BOTH mode still requires both values. */
     val requireBoth: Boolean = true,
     /** 0=standard, 1=precise, 2=max accuracy. */
