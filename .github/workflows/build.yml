@@ -8,9 +8,9 @@ on:
       variant:
         description: "Build variant"
         required: true
-        default: "release"
+        default: "debug"
         type: choice
-        options: [release, debug]
+        options: [debug, release]
 
 permissions:
   contents: read
@@ -45,6 +45,7 @@ jobs:
           test -f settings.gradle
           test -f app/build.gradle
           test -f gradle/wrapper/gradle-wrapper.properties
+          test -f gradle/wrapper/gradle-wrapper.jar
           test -f app/src/main/AndroidManifest.xml
           test -f app/src/main/java/com/srooyesh/seedcounter/MainActivity.kt
           test -f app/src/main/java/com/srooyesh/seedcounter/CameraActivity.kt
@@ -54,9 +55,17 @@ jobs:
           test -z "$(find . -type f \( -name "*.bat" -o -name "*.cmd" -o -name "*.ps1" \) -print -quit)"
           ./gradlew --version
 
-      - name: Prepare signing
+      - name: Unit tests
+        shell: bash
+        run: ./gradlew --no-daemon testDebugUnitTest
+
+      - name: Build debug APK
+        shell: bash
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Prepare release signing
         id: signing
-        if: ${{ inputs.variant != 'debug' || github.event_name != 'workflow_dispatch' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.variant == 'release' }}
         shell: bash
         env:
           KEYSTORE_B64: ${{ secrets.SEED_MAS_KEYSTORE_B64 }}
@@ -66,7 +75,7 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -z "$KEYSTORE_B64" || -z "$STORE_PASSWORD" || -z "$KEY_ALIAS" || -z "$KEY_PASSWORD" ]]; then
-            echo "Release build requires the same signing keystore as the installed seed-mas APK."
+            echo "Release build requires signing secrets."
             echo "Configure SEED_MAS_KEYSTORE_B64, SEED_MAS_STORE_PASSWORD, SEED_MAS_KEY_ALIAS and SEED_MAS_KEY_PASSWORD."
             exit 1
           fi
@@ -76,37 +85,21 @@ jobs:
           echo "SEED_MAS_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
           echo "SEED_MAS_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
 
-      - name: Unit tests
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.variant == 'release' }}
-        shell: bash
-        run: ./gradlew --no-daemon testDebugUnitTest
-
-      - name: Build release
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.variant == 'release' }}
+      - name: Build release APK
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.variant == 'release' }}
         shell: bash
         run: ./gradlew --no-daemon assembleRelease
 
-      - name: Build debug
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.variant == 'debug' }}
+      - name: Collect debug APK
+        if: ${{ github.event_name == 'push' || inputs.variant == 'debug' }}
         shell: bash
-        run: ./gradlew --no-daemon assembleDebug
-
-      - name: Collect one flat APK
-        shell: bash
-        env:
-          VARIANT: ${{ inputs.variant || 'release' }}
         run: |
           set -euo pipefail
           rm -rf release
           mkdir -p release
           VERSION_NAME=$(sed -n "s/^[[:space:]]*versionName[[:space:]]*'\([^']*\)'.*/\1/p" app/build.gradle | head -n 1)
-          VERSION_CODE=$(sed -n "s/^[[:space:]]*versionCode[[:space:]]*\([0-9][0-9]*\).*/\1/p" app/build.gradle | head -n 1)
-          [[ -n "$VERSION_NAME" && -n "$VERSION_CODE" ]]
-          if [[ "$VARIANT" == "release" ]]; then
-            cp app/build/outputs/apk/release/app-release.apk "release/seed-mas-${VERSION_NAME}.apk"
-          else
-            cp app/build/outputs/apk/debug/app-debug.apk "release/seed-mas-${VERSION_NAME}-debug.apk"
-          fi
+          [[ -n "$VERSION_NAME" ]]
+          cp app/build/outputs/apk/debug/app-debug.apk "release/seed-mas-${VERSION_NAME}-debug.apk"
           test "$(find release -maxdepth 1 -type f -name '*.apk' | wc -l)" -eq 1
           APK=$(find release -maxdepth 1 -type f -name '*.apk' -print -quit)
           echo "APK=$APK"
@@ -116,16 +109,37 @@ jobs:
           EXPECTED_VERSION=$(sed -n "s/^[[:space:]]*versionName[[:space:]]*'\([^']*\)'.*/\1/p" app/build.gradle | head -n 1)
           EXPECTED_CODE=$(sed -n "s/^[[:space:]]*versionCode[[:space:]]*\([0-9][0-9]*\).*/\1/p" app/build.gradle | head -n 1)
           echo "$BADGING" | grep -F "package: name='com.srooyesh.seedcounter' versionCode='$EXPECTED_CODE' versionName='$EXPECTED_VERSION'"
-          if [[ "$VARIANT" == "release" ]]; then
-            APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
-            [[ -n "$APKSIGNER" ]]
-            "$APKSIGNER" verify --verbose "$APK"
-          fi
           sha256sum "$APK" > release/SHA256SUMS.txt
           unzip -t "$APK" >/dev/null
           ls -lh release/
 
-      - name: Upload one APK artifact
+      - name: Collect release APK
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.variant == 'release' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf release
+          mkdir -p release
+          VERSION_NAME=$(sed -n "s/^[[:space:]]*versionName[[:space:]]*'\([^']*\)'.*/\1/p" app/build.gradle | head -n 1)
+          [[ -n "$VERSION_NAME" ]]
+          cp app/build/outputs/apk/release/app-release.apk "release/seed-mas-${VERSION_NAME}.apk"
+          test "$(find release -maxdepth 1 -type f -name '*.apk' | wc -l)" -eq 1
+          APK=$(find release -maxdepth 1 -type f -name '*.apk' -print -quit)
+          echo "APK=$APK"
+          AAPT2=$(find "$ANDROID_HOME/build-tools" -name aapt2 -type f | sort -V | tail -n 1)
+          [[ -n "$AAPT2" ]]
+          BADGING=$("$AAPT2" dump badging "$APK")
+          EXPECTED_VERSION=$(sed -n "s/^[[:space:]]*versionName[[:space:]]*'\([^']*\)'.*/\1/p" app/build.gradle | head -n 1)
+          EXPECTED_CODE=$(sed -n "s/^[[:space:]]*versionCode[[:space:]]*\([0-9][0-9]*\).*/\1/p" app/build.gradle | head -n 1)
+          echo "$BADGING" | grep -F "package: name='com.srooyesh.seedcounter' versionCode='$EXPECTED_CODE' versionName='$EXPECTED_VERSION'"
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
+          [[ -n "$APKSIGNER" ]]
+          "$APKSIGNER" verify --verbose "$APK"
+          sha256sum "$APK" > release/SHA256SUMS.txt
+          unzip -t "$APK" >/dev/null
+          ls -lh release/
+
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v7
         with:
           name: seed-mas-apk
