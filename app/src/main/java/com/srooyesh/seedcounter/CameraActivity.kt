@@ -40,6 +40,7 @@ import java.util.Locale
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.roundToInt
 
 class CameraActivity : AppCompatActivity() {
     companion object {
