@@ -9,7 +9,7 @@ android {
     defaultConfig {
         applicationId 'com.srooyesh.seedcounter'
         minSdk 26
-        targetSdk 35
+        targetSdk 36
         versionCode 12
         versionName '4.1.2'
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
