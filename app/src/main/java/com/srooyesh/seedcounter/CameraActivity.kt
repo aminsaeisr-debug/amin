@@ -151,15 +151,16 @@ class CameraActivity : AppCompatActivity() {
         }
         findViewById<ImageButton>(R.id.resetFrame).setOnClickListener {
             scanOverlay.resetToDefault(true)
-        updateScanRectSnapshot()
-        updateFrameSize()
+            updateScanRectSnapshot()
+            updateFrameSize()
         }
         findViewById<ImageButton>(R.id.exitCamera).setOnClickListener { finish() }
 
         scanOverlay.onFrameChangedListener = ScanOverlayView.OnFrameChangedListener { width, height, finished ->
+            // FIX: width/height are fractions (0.0..1.0). roundToIntSafe() already multiplies by 100.
             settings = settings.copy(
-                scanFrameWidthPct = (width * 100f).roundToIntSafe(),
-                scanFrameHeightPct = (height * 100f).roundToIntSafe()
+                scanFrameWidthPct = width.roundToIntSafe(),
+                scanFrameHeightPct = height.roundToIntSafe()
             ).sanitized()
             updateScanRectSnapshot()
             updateFrameSize()
@@ -699,4 +700,8 @@ class CameraActivity : AppCompatActivity() {
     private fun toast(message: String) = Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
 }
 
-private fun Float.roundToIntSafe(): Int = kotlin.math.round(this * 100f).toInt()
+/**
+ * Converts a fractional value in [0.0, 1.0] to a whole percentage in [0, 100].
+ * Example: 0.84f -> 84, 0.28f -> 28.
+ */
+private fun Float.roundToIntSafe(): Int = (this * 100f).roundToInt().coerceIn(0, 100)
