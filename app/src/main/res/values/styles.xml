@@ -4,7 +4,7 @@
         <item name="android:statusBarColor">@color/primary_dark</item>
         <item name="android:navigationBarColor">@color/background</item>
         <item name="android:windowLightStatusBar">false</item>
-        <item name="android:windowLightNavigationBar">true</item>
+        <!-- windowLightNavigationBar حذف شد چون API 27 نیاز دارد -->
         <item name="android:colorAccent">@color/primary</item>
         <item name="android:windowActionModeOverlay">true</item>
         <item name="android:windowNoTitle">true</item>
