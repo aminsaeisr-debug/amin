@@ -195,7 +195,12 @@ class MainActivity : AppCompatActivity() {
                     showSearchResults(query)
                 }
             }
-            adapter.notifyDataSetChanged()
+            // تغییر در این بخش: استفاده از notifyItemRangeChanged به جای notifyDataSetChanged
+            if (displayRows.isEmpty()) {
+                adapter.notifyItemRangeRemoved(0, adapter.itemCount)
+            } else {
+                adapter.notifyItemRangeChanged(0, displayRows.size)
+            }
         }
     }
 
