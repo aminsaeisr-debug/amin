@@ -1,4 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!--
+        values-v35: Android 15 (API 35) edge-to-edge را به‌طور پیش‌فرض اعمال می‌کند.
+        windowOptOutEdgeToEdgeEnforcement=true رفتار قبلی را بازمی‌گرداند.
+
+        نکته مهم: در سیستم منابع اندروید، این تعریف کاملاً جایگزین
+        values/styles.xml می‌شود (merge نمی‌شود). بنابراین باید همه آیتم‌های
+        base به‌علاوه آیتم‌های مخصوص v35 در اینجا تکرار شوند.
+    -->
     <style name="Theme.SeedMas" parent="Theme.Material3.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:statusBarColor">@color/primary_dark</item>
@@ -6,6 +15,8 @@
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">true</item>
         <item name="android:colorAccent">@color/primary</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowNoTitle">true</item>
         <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
     </style>
 </resources>
