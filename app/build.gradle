@@ -4,12 +4,12 @@ plugins {
 
 android {
     namespace 'com.srooyesh.seedcounter'
-    compileSdk 36
+    compileSdk 37
 
     defaultConfig {
         applicationId 'com.srooyesh.seedcounter'
         minSdk 26
-        targetSdk 36
+        targetSdk 37
         versionCode 12
         versionName '4.1.2'
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -30,11 +30,12 @@ android {
         buildConfig true
     }
 
-    // 🛡️ دروازه‌بان کیفیت: کد را دقیق بررسی می‌کند اما هشدارهای ظاهری بیلد را متوقف نمی‌کنند
+    // 🛡️ دروازه‌بان کیفیت
     lint {
+        baseline = file("lint-baseline.xml")
         abortOnError true
         checkReleaseBuilds true
-        warningsAsErrors true // اجازه می‌دهد هشدارها (مثل موارد ظاهری) بیلد را متوقف نکنند
+        warningsAsErrors true
     }
 
     signingConfigs {
@@ -77,7 +78,7 @@ android {
 }
 
 dependencies {
-    // هسته و سازگاری (نسخه‌ها با API 36 سازگار شدند)
+    // هسته و سازگاری
     implementation 'androidx.core:core-ktx:1.16.0'
     implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation 'com.google.android.material:material:1.12.0'
