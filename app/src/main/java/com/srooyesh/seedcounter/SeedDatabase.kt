@@ -4,6 +4,8 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import androidx.core.content.edit
+import androidx.core.database.sqlite.transaction
 
 
 data class SeedSession(
@@ -102,18 +104,14 @@ class SeedDatabase private constructor(context: Context) : SQLiteOpenHelper(
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        db.beginTransaction()
-        try {
+        db.transaction {
             if (oldVersion < 2) {
-                db.execSQL("INSERT OR REPLACE INTO meta(key_name, value_text) VALUES('schema_version','2')")
+                execSQL("INSERT OR REPLACE INTO meta(key_name, value_text) VALUES('schema_version','2')")
             }
             if (oldVersion < 3) {
-                db.execSQL("CREATE INDEX IF NOT EXISTS idx_sessions_customer ON sessions(customer)")
-                db.execSQL("INSERT OR REPLACE INTO meta(key_name, value_text) VALUES('schema_version','3')")
+                execSQL("CREATE INDEX IF NOT EXISTS idx_sessions_customer ON sessions(customer)")
+                execSQL("INSERT OR REPLACE INTO meta(key_name, value_text) VALUES('schema_version','3')")
             }
-            db.setTransactionSuccessful()
-        } finally {
-            db.endTransaction()
         }
     }
 
@@ -370,13 +368,9 @@ class SeedDatabase private constructor(context: Context) : SQLiteOpenHelper(
     }
 
     fun deleteAll() {
-        writableDatabase.beginTransaction()
-        try {
-            writableDatabase.execSQL("DELETE FROM records")
-            writableDatabase.execSQL("DELETE FROM sessions")
-            writableDatabase.setTransactionSuccessful()
-        } finally {
-            writableDatabase.endTransaction()
+        writableDatabase.transaction {
+            execSQL("DELETE FROM records")
+            execSQL("DELETE FROM sessions")
         }
     }
 
@@ -460,8 +454,8 @@ class SeedRepository(context: Context) {
 
     fun deleteAll() {
         db.deleteAll()
-        legacyPrefs.edit().clear().apply()
-        veryOldPrefs.edit().clear().apply()
+        legacyPrefs.edit { clear() }
+        veryOldPrefs.edit { clear() }
     }
 
     fun exportBackupJson(): String = BackupCodec.export(db, appContext, SettingsStore(appContext))
@@ -476,13 +470,12 @@ class SeedRepository(context: Context) {
 
         val dbRows = db.getAllRows()
         if (dbRows.isNotEmpty()) {
-            legacyPrefs.edit().putBoolean("db_migrated_v3", true).apply()
+            legacyPrefs.edit { putBoolean("db_migrated_v3", true) }
             return
         }
 
         val sessionMap = mutableMapOf<String, Long>()
-        db.writableDatabase.beginTransaction()
-        try {
+        db.writableDatabase.transaction {
             legacyPrefs.all.keys.filter { it.startsWith(MainActivity.PREFIX) }.sorted().forEach { key ->
                 val parts = key.split("|", limit = 3)
                 if (parts.size != 3) return@forEach
@@ -534,12 +527,9 @@ class SeedRepository(context: Context) {
 
             db.setMetaDirect("schema_version", "2")
             db.setMetaDirect("migration_complete", "true")
-            db.writableDatabase.setTransactionSuccessful()
-        } finally {
-            db.writableDatabase.endTransaction()
         }
 
-        legacyPrefs.edit().putBoolean("db_migrated_v3", true).apply()
+        legacyPrefs.edit { putBoolean("db_migrated_v3", true) }
     }
 
     private fun jalaliForDateKey(dateKey: String): String = try {
