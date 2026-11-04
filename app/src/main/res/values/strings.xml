@@ -1,6 +1,5 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:locale="fa">
     <string name="app_name">seed-mas</string>
-    <string name="app_title">seed-mas</string>
     <string name="app_subtitle">مدیریت سریع و دقیق ثبت شماره پاکت بذر</string>
     <string name="footer_version">seed-mas • نسخه %1$s</string>
     <string name="today_prefix">امروز • %1$s</string>
@@ -46,7 +45,6 @@
     <string name="status_active">آماده ثبت اطلاعات</string>
     <string name="status_initial">برای شروع، جلسه جدید بسازید.</string>
     <string name="session_started">جلسه «%1$s» شروع شد.</string>
-    <string name="active_status_title">وضعیت جلسه</string>
 
     <string name="recording_title">ثبت شماره پاکت</string>
     <string name="open_camera">باز کردن دوربین</string>
@@ -108,7 +106,6 @@
     <string name="scan_now">شروع اسکن</string>
     <string name="scan_again">اسکن بعدی</string>
     <string name="flash">چراغ</string>
-    <string name="auto_focus">فوکوس خودکار</string>
     <string name="camera_ready_manual">حالت دستی • برای شروع، «شروع اسکن» را بزنید.</string>
     <string name="auto_ready">حالت خودکار • آماده تشخیص پایدار</string>
     <string name="scanning_now">در حال تشخیص…</string>
@@ -118,7 +115,6 @@
     <string name="saved_continue">ذخیره شد • آماده ثبت بعدی</string>
     <string name="saved_press_scan">ذخیره شد • برای ثبت بعدی اسکن را شروع کنید.</string>
     <string name="stabilizing_reading">در حال پایدار کردن عدد…</string>
-    <string name="waiting_for_both">در انتظار هر دو تشخیص…</string>
     <string name="waiting_for_barcode_only">شماره پایدار شد؛ در انتظار بارکد…</string>
     <string name="waiting_for_number_only">بارکد پایدار شد؛ در انتظار شماره…</string>
     <string name="found">پیدا شد</string>
@@ -126,8 +122,6 @@
     <string name="result_review_title">نتیجه تشخیص — قبل از ثبت بررسی کنید</string>
     <string name="confirm_result">تأیید و ثبت</string>
     <string name="retry_result">رد نتیجه و اسکن دوباره</string>
-    <string name="number_label">شماره پاکت</string>
-    <string name="barcode_label">بارکد</string>
     <string name="complete_required_fields">اطلاعات لازم کامل یا معتبر نیست.</string>
     <string name="permission_denied">دسترسی دوربین داده نشد.</string>
     <string name="invalid_session">جلسه نامعتبر است.</string>
@@ -148,8 +142,6 @@
     <string name="stable_reads_label">تعداد تشخیص یکسان برای تأیید خودکار</string>
     <string name="number_length_label">حداقل و حداکثر طول شماره</string>
     <string name="number_length_help">گروه‌بندی ارقام محدود به ۴ رقم نیست؛ فاصله‌های نامنظم، جفتی، سه‌تایی و ترکیبی هم پذیرفته می‌شوند.</string>
-    <string name="frame_width">عرض کادر اسکن</string>
-    <string name="frame_height">ارتفاع کادر اسکن</string>
     <string name="frame_slider_help">از ۵۶٪ تا ۹۶٪ برای عرض و ۱۲٪ تا ۵۸٪ برای ارتفاع.</string>
     <string name="frame_reset">بازنشانی اندازه کادر</string>
     <string name="auto_zoom">بزرگنمایی هوشمند هنگام کوچک‌بودن عدد</string>
@@ -169,9 +161,6 @@
     <string name="recognition_number">فقط شماره</string>
     <string name="recognition_barcode">فقط بارکد</string>
     <string name="recognition_both">شماره + بارکد</string>
-    <string name="recognition_number_short">شماره</string>
-    <string name="recognition_barcode_short">بارکد</string>
-    <string name="recognition_both_short">هر دو</string>
     <string name="number_scan_simple">ساده • فقط رقم‌های کنار هم</string>
     <string name="number_scan_smart">هوشمند • گروه‌بندی و جداکننده‌ها</string>
     <string name="number_scan_simple_short">ساده</string>
@@ -192,7 +181,6 @@
     <string name="backup_now">ساخت و ارسال پشتیبان</string>
     <string name="restore_backup">بازیابی پشتیبان</string>
     <string name="data_help">نسخه‌های بعدی همین ساختار داده را حفظ می‌کنند تا ارتقا کم‌ریسک بماند.</string>
-    <string name="quick_scan_label">اسکن سریع</string>
     <string name="shortcut_quick_scan">اسکن سریع</string>
     <string name="shortcut_quick_scan_long">باز کردن مستقیم دوربین seed-mas برای اسکن</string>
 

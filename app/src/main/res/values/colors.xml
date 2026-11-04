@@ -10,7 +10,5 @@
     <color name="text_secondary">#5F726A</color>
     <color name="border">#D9E5DF</color>
     <color name="danger">#C74343</color>
-    <color name="warning">#A76D13</color>
     <color name="success">#1F8A5B</color>
-    <color name="camera_scrim">#B3000000</color>
 </resources>
