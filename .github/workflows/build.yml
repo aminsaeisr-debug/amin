@@ -1,0 +1,106 @@
+name: seed-mas • Enterprise CI
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+    branches: ["main", "master"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seed-mas-enterprise
+  cancel-in-progress: true
+
+jobs:
+  quality-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-cleanup: on-success
+      - name: Run Lint and Unit Tests
+        run: ./gradlew --no-daemon lintDebug testDebugUnitTest --continue
+      - name: Upload Lint Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-report
+          path: app/build/reports/lint-results-debug.txt
+  ui-tests-matrix:
+    needs: quality-gates
+    runs-on: macos-14 
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        api-level: [26, 30, 34] 
+    steps:
+      - uses: actions/checkout@v4
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-cleanup: on-success
+      - name: Run UI Tests on API ${{ matrix.api-level }}
+        uses: ReactiveCircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          emulator-boot-timeout: 1200
+          script: ./gradlew --no-daemon connectedDebugAndroidTest
+
+  build-release-apk:
+    needs: ui-tests-matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-cleanup: on-success
+      - name: Build Debug APK
+        run: ./gradlew --no-daemon assembleDebug
+      - name: Verify APK Structure
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          cp app/build/outputs/apk/debug/app-debug.apk release/seed-mas-final.apk
+          AAPT2=$(find "$ANDROID_HOME/build-tools" -name aapt2 -type f | sort -V | tail -n 1)
+          BADGING=$("$AAPT2" dump badging release/seed-mas-final.apk)
+          echo "$BADGING" | grep -F "package: name='com.srooyesh.seedcounter'"
+          unzip -t release/seed-mas-final.apk >/dev/null
+          sha256sum release/seed-mas-final.apk > release/SHA256SUMS.txt
+          ls -lh release/
+      - name: Upload Secured APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: seed-mas-apk
+          path: release/*.apk
+          if-no-files-found: error
+          retention-days: 30
