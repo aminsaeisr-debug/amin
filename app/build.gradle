@@ -32,9 +32,10 @@ android {
 
     lint {
         baseline = file("lint-baseline.xml")
+        lintConfig = file("lint.xml") // این خط رو اضافه کن
         abortOnError true
         checkReleaseBuilds true
-        warningsAsErrors false // موقتا خاموش شد تا بیلد سبز بشه
+        warningsAsErrors false
     }
 
     signingConfigs {
