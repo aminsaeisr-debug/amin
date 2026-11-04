@@ -157,7 +157,6 @@ class CameraActivity : AppCompatActivity() {
         findViewById<ImageButton>(R.id.exitCamera).setOnClickListener { finish() }
 
         scanOverlay.onFrameChangedListener = ScanOverlayView.OnFrameChangedListener { width, height, finished ->
-            // FIX: width/height are fractions (0.0..1.0). roundToIntSafe() already multiplies by 100.
             settings = settings.copy(
                 scanFrameWidthPct = width.roundToIntSafe(),
                 scanFrameHeightPct = height.roundToIntSafe()
@@ -170,8 +169,9 @@ class CameraActivity : AppCompatActivity() {
         preview.setOnTouchListener { view, event ->
             if (event.actionMasked == android.view.MotionEvent.ACTION_UP && settings.autoFocus) {
                 focusAt(event.x, event.y)
+                view.performClick()
             }
-            false
+            true
         }
 
         detectedNumber.addTextChangedListener(simpleWatcher())
@@ -266,7 +266,7 @@ class CameraActivity : AppCompatActivity() {
 
     private fun bindCamera(provider: ProcessCameraProvider, selector: CameraSelector) {
         provider.unbindAll()
-        val targetRotation = preview.display?.rotation ?: windowManager.defaultDisplay.rotation
+        val targetRotation = preview.display?.rotation ?: android.view.Surface.ROTATION_0
 
         val previewUseCase = Preview.Builder()
             .setTargetAspectRatio(AspectRatio.RATIO_16_9)
