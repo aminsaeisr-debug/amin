@@ -2,6 +2,7 @@ package com.srooyesh.seedcounter
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 
 /** Scan trigger behavior. */
 enum class ScanMode(val key: String) {
@@ -124,54 +125,55 @@ class SettingsStore(context: Context) {
 
     fun save(settings: AppSettings) {
         val s = settings.sanitized()
-        prefs.edit()
-            .putString("scan_mode", s.scanMode.key)
-            .putString("recognition_mode", s.recognitionMode.key)
-            .putString("number_scan_mode", s.numberScanMode.key)
-            .putInt("min_digits", s.minDigits)
-            .putInt("max_digits", s.maxDigits)
-            .putBoolean("require_both", true)
-            .putInt("scan_quality", s.scanQuality)
-            .putInt("stable_reads", s.stableReads)
-            .putInt("manual_scan_window_sec", s.manualScanWindowSec)
-            .putInt("flash_mode", s.flashMode)
-            .putBoolean("smart_zoom", s.smartZoom)
-            .putBoolean("barcode_auto_zoom", s.smartZoom)
-            .putBoolean("auto_focus", s.autoFocus)
-            .putBoolean("haptic", s.haptic)
-            .putBoolean("sound", s.sound)
-            .putBoolean("voice_guidance", s.voiceGuidance)
-            .putBoolean("duplicate_check", s.duplicateCheck)
-            .putInt("scan_frame_width_pct", s.scanFrameWidthPct)
-            .putInt("scan_frame_height_pct", s.scanFrameHeightPct)
-            .putString("date_output", s.dateOutput)
-            .putBoolean("out_row", s.outRow)
-            .putBoolean("out_variety", s.outVariety)
-            .putBoolean("out_customer", s.outCustomer)
-            .putBoolean("out_number", s.outNumber)
-            .putBoolean("out_barcode", s.outBarcode)
-            .putBoolean("out_jalali", s.outJalali)
-            .putBoolean("out_gregorian", s.outGregorian)
-            .putBoolean("out_time", s.outTime)
-            .putBoolean("out_session", s.outSession)
-            .apply()
+        prefs.edit {
+            putString("scan_mode", s.scanMode.key)
+            putString("recognition_mode", s.recognitionMode.key)
+            putString("number_scan_mode", s.numberScanMode.key)
+            putInt("min_digits", s.minDigits)
+            putInt("max_digits", s.maxDigits)
+            putBoolean("require_both", true)
+            putInt("scan_quality", s.scanQuality)
+            putInt("stable_reads", s.stableReads)
+            putInt("manual_scan_window_sec", s.manualScanWindowSec)
+            putInt("flash_mode", s.flashMode)
+            putBoolean("smart_zoom", s.smartZoom)
+            putBoolean("barcode_auto_zoom", s.smartZoom)
+            putBoolean("auto_focus", s.autoFocus)
+            putBoolean("haptic", s.haptic)
+            putBoolean("sound", s.sound)
+            putBoolean("voice_guidance", s.voiceGuidance)
+            putBoolean("duplicate_check", s.duplicateCheck)
+            putInt("scan_frame_width_pct", s.scanFrameWidthPct)
+            putInt("scan_frame_height_pct", s.scanFrameHeightPct)
+            putString("date_output", s.dateOutput)
+            putBoolean("out_row", s.outRow)
+            putBoolean("out_variety", s.outVariety)
+            putBoolean("out_customer", s.outCustomer)
+            putBoolean("out_number", s.outNumber)
+            putBoolean("out_barcode", s.outBarcode)
+            putBoolean("out_jalali", s.outJalali)
+            putBoolean("out_gregorian", s.outGregorian)
+            putBoolean("out_time", s.outTime)
+            putBoolean("out_session", s.outSession)
+        }
     }
 
     fun raw(): Map<String, *> = prefs.all.toMap()
 
     fun replaceFromMap(map: Map<String, *>) {
-        val editor = prefs.edit().clear()
-        map.forEach { (key, value) ->
-            when (value) {
-                is Boolean -> editor.putBoolean(key, value)
-                is Int -> editor.putInt(key, value)
-                is Long -> editor.putLong(key, value)
-                is Float -> editor.putFloat(key, value)
-                is Double -> editor.putFloat(key, value.toFloat())
-                is Number -> editor.putLong(key, value.toLong())
-                is String -> editor.putString(key, value)
+        prefs.edit {
+            clear()
+            map.forEach { (key, value) ->
+                when (value) {
+                    is Boolean -> putBoolean(key, value)
+                    is Int -> putInt(key, value)
+                    is Long -> putLong(key, value)
+                    is Float -> putFloat(key, value)
+                    is Double -> putFloat(key, value.toFloat())
+                    is Number -> putLong(key, value.toLong())
+                    is String -> putString(key, value)
+                }
             }
         }
-        editor.apply()
     }
 }
