@@ -71,7 +71,7 @@ jobs:
           script: ./gradlew --no-daemon connectedDebugAndroidTest
 
   build-release-apk:
-    needs: ui-tests-matrix
+    needs: quality-gates
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
