@@ -170,10 +170,16 @@ class ScanOverlayView @JvmOverloads constructor(
                 activeHandle = Handle.NONE
                 invalidate()
                 onFrameChangedListener?.onChanged(widthFraction, heightFraction, true)
+                performClick()
                 return true
             }
         }
         return false
+    }
+
+    override fun performClick(): Boolean {
+        super.performClick()
+        return true
     }
 
     private fun nearestHandle(x: Float, y: Float): Handle {
