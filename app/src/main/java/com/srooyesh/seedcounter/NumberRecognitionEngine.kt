@@ -1,6 +1,7 @@
 package com.srooyesh.seedcounter
 
 import android.graphics.Rect
+import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageProxy
 import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
@@ -53,6 +54,7 @@ class NumberRecognitionEngine(
         zoomAttempts = 0
     }
 
+    @OptIn(ExperimentalGetImage::class)
     fun process(
         proxy: ImageProxy,
         scanRectPreview: Rect,
