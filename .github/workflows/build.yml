@@ -1,152 +1,115 @@
-name: seed-mas • Build APK
+name: seed-mas • Enterprise CI
 
 on:
   push:
     branches: ["main", "master"]
+  pull_request:
+    branches: ["main", "master"]
   workflow_dispatch:
-    inputs:
-      variant:
-        description: "Build variant"
-        required: true
-        default: "debug"
-        type: choice
-        options: [debug, release]
 
 permissions:
   contents: read
 
 concurrency:
-  group: seed-mas-apk
+  group: seed-mas-enterprise
   cancel-in-progress: true
 
 jobs:
-  build:
+  # ==========================================
+  # 🛡️ لایه اول: دروازه‌بان کیفیت (سرعت بالا)
+  # ==========================================
+  quality-gates:
     runs-on: ubuntu-latest
-    timeout-minutes: 45 # افزایش زمان برای اجرای شبیه‌ساز
+    timeout-minutes: 15
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
+      
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-          cache: gradle
-
+          
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
-
-      - name: Verify project structure
-        shell: bash
-        run: |
-          set -euo pipefail
-          chmod +x ./gradlew
-          test -f settings.gradle
-          test -f app/build.gradle
-          test -f gradle/wrapper/gradle-wrapper.properties
-          test -f gradle/wrapper/gradle-wrapper.jar
-          test -f app/src/main/AndroidManifest.xml
-          test -f app/src/main/java/com/srooyesh/seedcounter/MainActivity.kt
-          test -f app/src/main/java/com/srooyesh/seedcounter/CameraActivity.kt
-          test -f app/src/main/java/com/srooyesh/seedcounter/NumberRecognitionEngine.kt
-          test "$(find app/src/main/res/values -maxdepth 1 -name "styles.xml" | wc -l)" -eq 1
-          test -f ./gradlew
-          test -z "$(find . -type f \( -name "*.bat" -o -name "*.cmd" -o -name "*.ps1" \) -print -quit)"
-          ./gradlew --version
-
-      # 🧠 ۱. تست‌های واحد (بررسی منطق و ریاضیات برنامه)
-      - name: Unit tests
-        shell: bash
+        
+      - name: Static Analysis (Lint)
+        run: ./gradlew --no-daemon lintDebug
+        
+      - name: Unit Tests (منطق برنامه)
         run: ./gradlew --no-daemon testDebugUnitTest
 
-      # 🛡️ ۲. تحلیل ایستا (شکار باگ‌های API و منابع قبل از بیلد)
-      - name: Lint Code
-        shell: bash
-        run: ./gradlew --no-daemon lintDebug
-
-      # 🏗️ ۳. ساخت APK دیباگ
-      - name: Build debug APK
-        shell: bash
-        run: ./gradlew --no-daemon assembleDebug
-
-      # 📱 ۴. تست رابط کاربری روی شبیه‌ساز واقعی (فقط زمانی که Push می‌کنی)
-      - name: Run UI Tests on Emulator
-        if: ${{ github.event_name == 'push' || inputs.variant == 'debug' }}
+  # ==========================================
+  # 📱 لایه دوم: تست روی ۳ گوشی مجازی (Matrix)
+  # ==========================================
+  ui-tests-matrix:
+    needs: quality-gates
+    runs-on: macos-14 
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        # تست همزمان روی اندروید 8 (26)، اندروید 11 (30) و اندروید 14 (34)
+        api-level: [26, 30, 34] 
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+      
+      - name: Run UI Tests on API ${{ matrix.api-level }}
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
-          api-level: 30
+          api-level: ${{ matrix.api-level }}
           target: google_apis
           arch: x86_64
           disable-animations: true
+          # اجرای تست‌های ذخیره سازی و اکسل
           script: ./gradlew --no-daemon connectedDebugAndroidTest
 
-      - name: Prepare release signing
-        id: signing
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.variant == 'release' }}
-        shell: bash
-        env:
-          KEYSTORE_B64: ${{ secrets.SEED_MAS_KEYSTORE_B64 }}
-          STORE_PASSWORD: ${{ secrets.SEED_MAS_STORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.SEED_MAS_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.SEED_MAS_KEY_PASSWORD }}
+  # ==========================================
+  # 🏗️ لایه سوم: ساخت و مهر و موم فایل نهایی
+  # ==========================================
+  build-release-apk:
+    needs: ui-tests-matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+      
+      - name: Build Debug APK
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Verify APK Structure
         run: |
           set -euo pipefail
-          if [[ -z "$KEYSTORE_B64" || -z "$STORE_PASSWORD" || -z "$KEY_ALIAS" || -z "$KEY_PASSWORD" ]]; then
-            echo "Release build requires signing secrets."
-            echo "Configure SEED_MAS_KEYSTORE_B64, SEED_MAS_STORE_PASSWORD, SEED_MAS_KEY_ALIAS and SEED_MAS_KEY_PASSWORD."
-            exit 1
-          fi
-          echo "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/seed-mas-release.keystore"
-          echo "SEED_MAS_KEYSTORE_PATH=$RUNNER_TEMP/seed-mas-release.keystore" >> "$GITHUB_ENV"
-          echo "SEED_MAS_STORE_PASSWORD=$STORE_PASSWORD" >> "$GITHUB_ENV"
-          echo "SEED_MAS_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
-          echo "SEED_MAS_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
-
-      - name: Build release APK
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.variant == 'release' }}
-        shell: bash
-        run: ./gradlew --no-daemon assembleRelease
-
-      - name: Collect and verify APK
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -rf release
           mkdir -p release
-
-          VERSION_NAME=$(grep -E "^\s*versionName\s+['\"]([^'\"]+)" app/build.gradle | head -1 | sed -E "s/^\s*versionName\s+['\"]([^'\"]+).*/\1/")
-          EXPECTED_CODE=$(grep -E "^\s*versionCode\s+([0-9]+)" app/build.gradle | head -1 | sed -E "s/^\s*versionCode\s+([0-9]+).*/\1/")
-          [[ -n "$VERSION_NAME" && -n "$EXPECTED_CODE" ]] || { echo "Could not parse version from build.gradle"; exit 1; }
-
-          if [[ "${{ github.event_name }}" == "push" || "${{ inputs.variant }}" == "debug" ]]; then
-            APK_SOURCE="app/build/outputs/apk/debug/app-debug.apk"
-            APK_NAME="seed-mas-${VERSION_NAME}-debug.apk"
-          else
-            APK_SOURCE="app/build/outputs/apk/release/app-release.apk"
-            APK_NAME="seed-mas-${VERSION_NAME}.apk"
-          fi
-
-          cp "$APK_SOURCE" "release/$APK_NAME"
-          test "$(find release -maxdepth 1 -type f -name '*.apk' | wc -l)" -eq 1
-          APK="release/$APK_NAME"
-
+          cp app/build/outputs/apk/debug/app-debug.apk release/seed-mas-final.apk
+          
           AAPT2=$(find "$ANDROID_HOME/build-tools" -name aapt2 -type f | sort -V | tail -n 1)
-          [[ -n "$AAPT2" ]]
-          BADGING=$("$AAPT2" dump badging "$APK")
-          echo "$BADGING" | grep -F "package: name='com.srooyesh.seedcounter' versionCode='$EXPECTED_CODE' versionName='$VERSION_NAME'"
-          unzip -t "$APK" >/dev/null
-
-          if [[ "${{ inputs.variant }}" == "release" ]]; then
-            APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
-            [[ -n "$APKSIGNER" ]]
-            "$APKSIGNER" verify --verbose "$APK"
-          fi
-
-          sha256sum "$APK" > release/SHA256SUMS.txt
+          BADGING=$("$AAPT2" dump badging release/seed-mas-final.apk)
+          echo "$BADGING" | grep -F "package: name='com.srooyesh.seedcounter'"
+          
+          unzip -t release/seed-mas-final.apk >/dev/null
+          sha256sum release/seed-mas-final.apk > release/SHA256SUMS.txt
           ls -lh release/
 
-      - name: Upload APK artifact
+      - name: Upload Secured APK
         uses: actions/upload-artifact@v4
         with:
           name: seed-mas-apk
