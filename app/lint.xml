@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- اجازه استفاده از ویژگی آزمایشی دوربین -->
+    <issue id="UnsafeOptInUsageError">
+        <ignore path="src/main/java/com/srooyesh/seedcounter/NumberRecognitionEngine.kt" />
+    </issue>
+</lint>
