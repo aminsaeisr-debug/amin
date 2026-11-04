@@ -25,6 +25,7 @@ enum class RecognitionMode(val key: String) {
     }
 }
 
+
 /** How aggressively the number OCR combines separated/irregular digit groups. */
 enum class NumberScanMode(val key: String) {
     SIMPLE("simple"),
@@ -39,21 +40,31 @@ enum class NumberScanMode(val key: String) {
 data class AppSettings(
     val scanMode: ScanMode = ScanMode.MANUAL,
     val recognitionMode: RecognitionMode = RecognitionMode.NUMBER,
+    /** Number grouping intelligence: SIMPLE reads contiguous digits; SMART joins irregular groups and recognizes separators. */
     val numberScanMode: NumberScanMode = NumberScanMode.SIMPLE,
     val minDigits: Int = 4,
     val maxDigits: Int = 6,
+    /** Kept for backup compatibility; BOTH mode still requires both values. */
     val requireBoth: Boolean = true,
+    /** 0=standard, 1=precise, 2=max accuracy. */
     val scanQuality: Int = 2,
+    /** Number of consecutive identical detections required in AUTO mode. */
     val stableReads: Int = 3,
+    /** Recognition window in manual mode. */
     val manualScanWindowSec: Int = 5,
+    /** 0=off, 1=on. */
     val flashMode: Int = 0,
+    /** Smart zoom may be driven by ML Kit / camera assist. */
     val smartZoom: Boolean = true,
+    /** Auto-focus is enabled at the scan center and on tap-to-focus. */
     val autoFocus: Boolean = true,
     val haptic: Boolean = true,
     val sound: Boolean = true,
     val voiceGuidance: Boolean = true,
     val duplicateCheck: Boolean = true,
+    /** Scan frame width as a percentage of the visible PreviewView. */
     val scanFrameWidthPct: Int = 84,
+    /** Scan frame height as a percentage of the visible PreviewView. */
     val scanFrameHeightPct: Int = 28,
     val dateOutput: String = "both",
     val outRow: Boolean = true,
@@ -90,6 +101,7 @@ class SettingsStore(context: Context) {
     fun get(): AppSettings {
         val min = prefs.getInt("min_digits", 4).coerceIn(2, 16)
         val max = prefs.getInt("max_digits", 6).coerceIn(min, 16)
+        // Keep the old preference key as a fallback for existing installations.
         val legacySmartZoom = prefs.getBoolean("barcode_auto_zoom", true)
         return AppSettings(
             scanMode = ScanMode.fromStored(prefs.getString("scan_mode", ScanMode.MANUAL.key)),
@@ -160,6 +172,7 @@ class SettingsStore(context: Context) {
 
     fun raw(): Map<String, *> = prefs.all.toMap()
 
+    /** Replaces known and unknown preference keys for forward-compatible backups. */
     fun replaceFromMap(map: Map<String, *>) {
         prefs.edit {
             clear()
