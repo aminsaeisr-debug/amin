@@ -34,7 +34,7 @@ android {
     lint {
         abortOnError true
         checkReleaseBuilds true
-        warningsAsErrors false // اجازه می‌دهد هشدارها (مثل موارد ظاهری) بیلد را متوقف نکنند
+        warningsAsErrors true // اجازه می‌دهد هشدارها (مثل موارد ظاهری) بیلد را متوقف نکنند
     }
 
     signingConfigs {
