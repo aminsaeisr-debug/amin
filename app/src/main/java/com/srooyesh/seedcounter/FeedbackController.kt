@@ -17,7 +17,8 @@ class FeedbackController(context: Context) : TextToSpeech.OnInitListener {
     override fun onInit(status: Int) {
         if (released || status != TextToSpeech.SUCCESS) return
         val engine = tts ?: return
-        val result = engine.setLanguage(Locale("fa", "IR"))
+        // تغییر در این خط: استفاده از Builder به جای سازنده‌ی منسوخ‌شده
+        val result = engine.setLanguage(java.util.Locale.Builder().setLanguage("fa").setRegion("IR").build())
         ttsReady = result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED
         if (ttsReady) {
             engine.setSpeechRate(0.95f)
