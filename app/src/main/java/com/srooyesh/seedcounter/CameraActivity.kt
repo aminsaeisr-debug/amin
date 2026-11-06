@@ -17,6 +17,7 @@ import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.AspectRatio
@@ -51,7 +52,6 @@ class CameraActivity : AppCompatActivity() {
         private const val AUTO_COOLDOWN_MS = 900L
         private const val BOTH_PAIR_WINDOW_MS = 2500L
         private const val WATCHDOG_MS = 8000L
-        // خط AUTO_SAVE_DELAY_MS حذف شد تا از تنظیمات خوانده شود
     }
 
     private val preview by lazy { findViewById<PreviewView>(R.id.preview) }
@@ -130,6 +130,18 @@ class CameraActivity : AppCompatActivity() {
             return
         }
 
+        // 🔙 پیاده‌سازی بک هوشمند با روش استاندارد جدید (OnBackPressedDispatcher)
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (resultPanel.visibility == View.VISIBLE && (pendingNumber.isNotBlank() || pendingBarcode.isNotBlank())) {
+                    savePending { finish() }
+                } else {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                }
+            }
+        })
+
         settings = settingsStore.get()
         scanOverlay.setFractions(settings.scanFrameWidthPct / 100f, settings.scanFrameHeightPct / 100f)
         updateScanRectSnapshot()
@@ -160,7 +172,7 @@ class CameraActivity : AppCompatActivity() {
             updateScanRectSnapshot()
             updateFrameSize()
         }
-        findViewById<ImageButton>(R.id.exitCamera).setOnClickListener { onBackPressed() }
+        findViewById<ImageButton>(R.id.exitCamera).setOnClickListener { onBackPressedDispatcher.onBackPressed() }
 
         scanOverlay.onFrameChangedListener = ScanOverlayView.OnFrameChangedListener { width, height, finished ->
             settings = settings.copy(
@@ -172,7 +184,6 @@ class CameraActivity : AppCompatActivity() {
             if (finished) settingsStore.save(settings)
         }
 
-        // 🚀 راه‌اندازی سیستم زوم دستی با دو انگشت
         scaleGestureDetector = ScaleGestureDetector(this, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
             override fun onScale(detector: ScaleGestureDetector): Boolean {
                 val cam = camera ?: return false
@@ -218,22 +229,11 @@ class CameraActivity : AppCompatActivity() {
         reloadSettingsAfterReturn()
     }
 
-    // 💾 ذخیره آخرین میزان زوم هنگام خروج از دوربین
     override fun onPause() {
         super.onPause()
         camera?.cameraInfo?.zoomState?.value?.zoomRatio?.let { currentZoom ->
             settings = settings.copy(manualZoomRatio = currentZoom)
             settingsStore.save(settings)
-        }
-    }
-
-    // 🔙 بک هوشمند: اگر نتیجه‌ای روی صفحه بود، اول ثبت کن بعد خارج شو
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        if (resultPanel.visibility == View.VISIBLE && (pendingNumber.isNotBlank() || pendingBarcode.isNotBlank())) {
-            savePending { finish() }
-        } else {
-            super.onBackPressed()
         }
     }
 
@@ -330,7 +330,6 @@ class CameraActivity : AppCompatActivity() {
         analyzer.setAnalyzer(executor) { proxy -> analyze(proxy) }
         camera = provider.bindToLifecycle(this, selector, group)
         
-        // 🎯 اعمال زومی که کاربر قبلا تنظیم کرده بود
         val zoomState = camera?.cameraInfo?.zoomState?.value
         if (zoomState != null) {
             val initialZoom = settings.manualZoomRatio.coerceIn(zoomState.minZoomRatio, zoomState.maxZoomRatio)
@@ -567,7 +566,6 @@ class CameraActivity : AppCompatActivity() {
 
     private fun refreshResultPanel() {
         resultPanel.visibility = View.VISIBLE
-        // 👇 مخفی کردن منوها تا میدان دید باز شود
         topBar.visibility = View.GONE
         bottomControls.visibility = View.GONE
 
@@ -579,13 +577,11 @@ class CameraActivity : AppCompatActivity() {
         barcodeState.text = if (pendingBarcode.isBlank()) getString(R.string.not_found) else getString(R.string.found)
         refreshConfirmState()
         
-        // ⏱ شروع تایمر ثبت خودکار با زمان خوانده شده از تنظیمات
         startAutoSaveTimer()
     }
 
     private fun startAutoSaveTimer() {
         autoSaveCountdown?.cancel()
-        // 👇 خواندن زمان از تنظیمات کاربر
         val delayMs = settings.autoSaveDelaySec * 1000L
         
         autoSaveCountdown = object : CountDownTimer(delayMs, 1000L) {
