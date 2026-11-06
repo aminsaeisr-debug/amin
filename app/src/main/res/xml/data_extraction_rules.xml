@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <!-- فایل‌ها و دیتابیس‌هایی که باید از پشتیبان‌گیری حذف شوند -->
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <!-- فایل‌ها و دیتابیس‌هایی که نباید بین گوشی‌ها منتقل شوند -->
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+    </device-transfer>
+</data-extraction-rules>
