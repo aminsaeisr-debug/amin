@@ -51,7 +51,8 @@
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/settings"
                     android:src="@drawable/ic_settings"
-                    android:tint="@android:color/white" />
+                    app:tint="@android:color/white" /> 
+                    <!-- 👆 خط بالا اصلاح شد (android:tint به app:tint تغییر کرد) -->
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
