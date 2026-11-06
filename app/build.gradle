@@ -30,12 +30,11 @@ android {
         buildConfig true
     }
 
+ // 🛡️ دروازه‌بان کیفیت
     lint {
-        baseline = file("lint-baseline.xml")
-        lintConfig = file("lint.xml") // این خط رو اضافه کن
         abortOnError true
         checkReleaseBuilds true
-        warningsAsErrors false
+        warningsAsErrors true
     }
 
     signingConfigs {
