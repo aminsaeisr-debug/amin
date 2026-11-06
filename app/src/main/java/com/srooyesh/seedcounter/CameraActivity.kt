@@ -51,7 +51,7 @@ class CameraActivity : AppCompatActivity() {
         private const val AUTO_COOLDOWN_MS = 900L
         private const val BOTH_PAIR_WINDOW_MS = 2500L
         private const val WATCHDOG_MS = 8000L
-        private const val AUTO_SAVE_DELAY_MS = 3000L // 👈 تایمر ۳ ثانیه‌ای ثبت خودکار
+        // خط AUTO_SAVE_DELAY_MS حذف شد تا از تنظیمات خوانده شود
     }
 
     private val preview by lazy { findViewById<PreviewView>(R.id.preview) }
@@ -64,7 +64,7 @@ class CameraActivity : AppCompatActivity() {
     private val barcodeState by lazy { findViewById<TextView>(R.id.barcodeState) }
     private val resultPanel by lazy { findViewById<View>(R.id.resultPanel) }
     private val bottomControls by lazy { findViewById<View>(R.id.bottomControls) }
-    private val topBar by lazy { findViewById<View>(R.id.topBar) } // 👈 برای مخفی کردن
+    private val topBar by lazy { findViewById<View>(R.id.topBar) }
     private val confirmButton by lazy { findViewById<Button>(R.id.confirm) }
     private val retryButton by lazy { findViewById<Button>(R.id.retry) }
     private val scanButton by lazy { findViewById<Button>(R.id.scanNow) }
@@ -160,7 +160,7 @@ class CameraActivity : AppCompatActivity() {
             updateScanRectSnapshot()
             updateFrameSize()
         }
-        findViewById<ImageButton>(R.id.exitCamera).setOnClickListener { onBackPressed() } // 👈 بک هوشمند
+        findViewById<ImageButton>(R.id.exitCamera).setOnClickListener { onBackPressed() }
 
         scanOverlay.onFrameChangedListener = ScanOverlayView.OnFrameChangedListener { width, height, finished ->
             settings = settings.copy(
@@ -338,7 +338,7 @@ class CameraActivity : AppCompatActivity() {
         }
 
         engine?.close()
-        engine = NumberRecognitionEngine() // دیگر پارامتر زوم خودکار نمی‌گیرد
+        engine = NumberRecognitionEngine()
 
         camera?.cameraControl?.enableTorch(settings.flashMode == 1)
         if (settings.autoFocus) focusCenter()
@@ -579,13 +579,16 @@ class CameraActivity : AppCompatActivity() {
         barcodeState.text = if (pendingBarcode.isBlank()) getString(R.string.not_found) else getString(R.string.found)
         refreshConfirmState()
         
-        // ⏱ شروع تایمر ثبت خودکار
+        // ⏱ شروع تایمر ثبت خودکار با زمان خوانده شده از تنظیمات
         startAutoSaveTimer()
     }
 
     private fun startAutoSaveTimer() {
         autoSaveCountdown?.cancel()
-        autoSaveCountdown = object : CountDownTimer(AUTO_SAVE_DELAY_MS, 1000L) {
+        // 👇 خواندن زمان از تنظیمات کاربر
+        val delayMs = settings.autoSaveDelaySec * 1000L
+        
+        autoSaveCountdown = object : CountDownTimer(delayMs, 1000L) {
             override fun onTick(millisUntilFinished: Long) {
                 val seconds = millisUntilFinished / 1000
                 autoSaveTimerText.text = "ثبت خودکار در $seconds ثانیه..."
