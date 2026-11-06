@@ -69,7 +69,22 @@ class MainActivity : AppCompatActivity() {
         manual = findViewById(R.id.manual)
 
         val list = findViewById<RecyclerView>(R.id.list)
-        adapter = HistoryAdapter(displayRows)
+        
+        // 👇 اتصال دکمه حذف به همراه پنجره تاییدیه
+        adapter = HistoryAdapter(displayRows) { historyRow ->
+            AlertDialog.Builder(this@MainActivity)
+                .setTitle("حذف رکورد")
+                .setMessage("آیا از حذف این رکورد مطمئن هستید؟")
+                .setPositiveButton("حذف") { _, _ ->
+                    lifecycleScope.launch {
+                        withContext(Dispatchers.IO) { repo.deleteRecord(historyRow.id) }
+                        refreshScreen()
+                    }
+                }
+                .setNegativeButton("انصراف", null)
+                .show()
+        }
+        
         list.layoutManager = LinearLayoutManager(this)
         list.adapter = adapter
 
@@ -195,12 +210,8 @@ class MainActivity : AppCompatActivity() {
                     showSearchResults(query)
                 }
             }
-            // تغییر در این بخش: استفاده از notifyItemRangeChanged به جای notifyDataSetChanged
-            if (displayRows.isEmpty()) {
-                adapter.notifyItemRangeRemoved(0, adapter.itemCount)
-            } else {
-                adapter.notifyItemRangeChanged(0, displayRows.size)
-            }
+            // استفاده از notifyDataSetChanged برای جلوگیری از کرش هنگام حذف یا جستجو
+            adapter.notifyDataSetChanged()
         }
     }
 
