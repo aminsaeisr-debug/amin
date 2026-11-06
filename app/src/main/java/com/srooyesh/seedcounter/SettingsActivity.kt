@@ -29,11 +29,11 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var numberScanMode: Spinner
     private lateinit var scanQuality: Spinner
     private lateinit var scanWindow: Spinner
+    private lateinit var autoSaveDelay: Spinner // 👈 اضافه شد
     private lateinit var stableReads: Spinner
     private lateinit var minDigits: NumberPicker
     private lateinit var maxDigits: NumberPicker
     private lateinit var defaultFlash: Spinner
-    // autoZoom حذف شد
     private lateinit var autoFocus: com.google.android.material.materialswitch.MaterialSwitch
     private lateinit var duplicateCheck: com.google.android.material.materialswitch.MaterialSwitch
     private lateinit var haptic: com.google.android.material.materialswitch.MaterialSwitch
@@ -70,11 +70,11 @@ class SettingsActivity : AppCompatActivity() {
         numberScanMode = findViewById(R.id.numberScanMode)
         scanQuality = findViewById(R.id.scanQuality)
         scanWindow = findViewById(R.id.scanWindow)
+        autoSaveDelay = findViewById(R.id.autoSaveDelay) // 👈 اضافه شد
         stableReads = findViewById(R.id.stableReads)
         minDigits = findViewById(R.id.minDigits)
         maxDigits = findViewById(R.id.maxDigits)
         defaultFlash = findViewById(R.id.defaultFlash)
-        // autoZoom = findViewById(R.id.autoZoom) حذف شد
         autoFocus = findViewById(R.id.autoFocus)
         duplicateCheck = findViewById(R.id.duplicateCheck)
         haptic = findViewById(R.id.haptic)
@@ -134,6 +134,10 @@ class SettingsActivity : AppCompatActivity() {
         val windowSeconds = intArrayOf(3, 5, 8, 10)
         setSpinner(scanWindow, windowSeconds.map { getString(R.string.scan_window_value, it) }.toTypedArray(), 1)
 
+        // 👇 تنظیم منوی زمان ثبت خودکار
+        val autoSaveSeconds = intArrayOf(1, 2, 3, 4, 5, 6, 8, 10)
+        setSpinner(autoSaveDelay, autoSaveSeconds.map { "$it ثانیه" }.toTypedArray(), 2)
+
         val stableOptions = intArrayOf(2, 3, 4, 5)
         setSpinner(stableReads, stableOptions.map { getString(R.string.stable_reads_value, it) }.toTypedArray(), 1)
     }
@@ -183,6 +187,11 @@ class SettingsActivity : AppCompatActivity() {
 
         val windows = intArrayOf(3, 5, 8, 10)
         scanWindow.setSelection(windows.indexOf(settings.manualScanWindowSec).coerceAtLeast(0))
+        
+        // 👇 نمایش زمان ثبت خودکار ذخیره شده
+        val autoSaveSeconds = intArrayOf(1, 2, 3, 4, 5, 6, 8, 10)
+        autoSaveDelay.setSelection(autoSaveSeconds.indexOf(settings.autoSaveDelaySec).coerceAtLeast(0))
+
         val stable = intArrayOf(2, 3, 4, 5)
         stableReads.setSelection(stable.indexOf(settings.stableReads).coerceAtLeast(0))
 
@@ -219,68 +228,4 @@ class SettingsActivity : AppCompatActivity() {
             R.id.dateGregorian -> "gregorian"
             else -> "both"
         }
-        val windows = intArrayOf(3, 5, 8, 10)
-        val stable = intArrayOf(2, 3, 4, 5)
-        
-        val newSettings = settings.copy(
-            scanMode = if (scanMode.selectedItemPosition == 1) ScanMode.AUTO else ScanMode.MANUAL,
-            recognitionMode = when (recognitionMode.selectedItemPosition) {
-                1 -> RecognitionMode.BARCODE
-                2 -> RecognitionMode.BOTH
-                else -> RecognitionMode.NUMBER
-            },
-            numberScanMode = if (numberScanMode.selectedItemPosition == 1) NumberScanMode.SMART else NumberScanMode.SIMPLE,
-            minDigits = minDigits.value,
-            maxDigits = maxDigits.value,
-            scanQuality = scanQuality.selectedItemPosition.coerceIn(0, 2),
-            stableReads = stable[stableReads.selectedItemPosition.coerceIn(0, stable.lastIndex)],
-            manualScanWindowSec = windows[scanWindow.selectedItemPosition.coerceIn(0, windows.lastIndex)],
-            flashMode = if (defaultFlash.selectedItemPosition == 1) 1 else 0,
-            autoFocus = autoFocus.isChecked,
-            haptic = haptic.isChecked,
-            sound = sound.isChecked,
-            voiceGuidance = voiceGuidance.isChecked,
-            duplicateCheck = duplicateCheck.isChecked,
-            scanFrameWidthPct = frameWidth.value.roundToInt(),
-            scanFrameHeightPct = frameHeight.value.roundToInt(),
-            dateOutput = dateMode,
-            outRow = outRow.isChecked,
-            outVariety = outVariety.isChecked,
-            outCustomer = outCustomer.isChecked,
-            outNumber = outNumber.isChecked,
-            outBarcode = outBarcode.isChecked,
-            outJalali = true,
-            outGregorian = true,
-            outTime = outTime.isChecked,
-            outSession = outSession.isChecked
-        ).sanitized()
-
-        settingsStore.save(newSettings)
-        setResult(Activity.RESULT_OK)
-        finish()
-    }
-
-    private fun restoreBackup(uri: Uri) {
-        lifecycleScope.launch {
-            val result = withContext(Dispatchers.IO) {
-                runCatching {
-                    val json = contentResolver.openInputStream(uri)?.use { input ->
-                        BufferedReader(InputStreamReader(input, Charsets.UTF_8)).readText()
-                    } ?: error(getString(R.string.restore_error))
-                    SeedRepository(this@SettingsActivity).importBackupJson(json).getOrThrow()
-                }
-            }
-            if (result.isSuccess) toast(getString(R.string.restore_done, result.getOrThrow()))
-            else toast(result.exceptionOrNull()?.message ?: getString(R.string.restore_error))
-        }
-    }
-
-    private fun setSpinner(spinner: Spinner, values: Array<String>, selected: Int) {
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, values)
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        spinner.adapter = adapter
-        spinner.setSelection(selected.coerceIn(0, values.lastIndex))
-    }
-
-    private fun toast(message: String) = Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-}
+        val windows
