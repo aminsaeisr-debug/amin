@@ -1,4 +1,4 @@
-package com.srooyesh.seedcounter
+ package com.srooyesh.seedcounter
 
 import android.content.ContentValues
 import android.content.Context
@@ -56,6 +56,13 @@ class SeedDatabase private constructor(context: Context) : SQLiteOpenHelper(
     DB_NAME,
     null,
     DB_VERSION
+// در کلاس SeedDatabase:
+    fun deleteRecord(recordId: Long) {
+        writableDatabase.delete("records", "id=?", arrayOf(recordId.toString()))
+    }
+
+// در کلاس SeedRepository (پایین‌تر):
+    fun deleteRecord(recordId: Long) = db.deleteRecord(recordId)
 ) {
     init {
         setWriteAheadLoggingEnabled(true)
