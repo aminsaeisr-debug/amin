@@ -20,10 +20,6 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import kotlin.math.roundToInt
 
-/**
- * Single screen for every user-adjustable behavior.
- * Values are restored from SettingsStore and written back only after validation.
- */
 class SettingsActivity : AppCompatActivity() {
     private val settingsStore by lazy { SettingsStore(this) }
     private var settings = AppSettings()
@@ -37,7 +33,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var minDigits: NumberPicker
     private lateinit var maxDigits: NumberPicker
     private lateinit var defaultFlash: Spinner
-    private lateinit var autoZoom: com.google.android.material.materialswitch.MaterialSwitch
+    // autoZoom حذف شد
     private lateinit var autoFocus: com.google.android.material.materialswitch.MaterialSwitch
     private lateinit var duplicateCheck: com.google.android.material.materialswitch.MaterialSwitch
     private lateinit var haptic: com.google.android.material.materialswitch.MaterialSwitch
@@ -78,7 +74,7 @@ class SettingsActivity : AppCompatActivity() {
         minDigits = findViewById(R.id.minDigits)
         maxDigits = findViewById(R.id.maxDigits)
         defaultFlash = findViewById(R.id.defaultFlash)
-        autoZoom = findViewById(R.id.autoZoom)
+        // autoZoom = findViewById(R.id.autoZoom) حذف شد
         autoFocus = findViewById(R.id.autoFocus)
         duplicateCheck = findViewById(R.id.duplicateCheck)
         haptic = findViewById(R.id.haptic)
@@ -129,51 +125,17 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun configureSpinners() {
-        setSpinner(
-            scanMode,
-            arrayOf(getString(R.string.scan_mode_manual), getString(R.string.scan_mode_auto)),
-            0
-        )
-        setSpinner(
-            recognitionMode,
-            arrayOf(
-                getString(R.string.recognition_number),
-                getString(R.string.recognition_barcode),
-                getString(R.string.recognition_both)
-            ),
-            0
-        )
-        setSpinner(
-            numberScanMode,
-            arrayOf(getString(R.string.number_scan_simple), getString(R.string.number_scan_smart)),
-            1
-        )
-        setSpinner(
-            scanQuality,
-            arrayOf(
-                getString(R.string.quality_standard),
-                getString(R.string.quality_precise),
-                getString(R.string.quality_max)
-            ),
-            2
-        )
-        setSpinner(
-            defaultFlash,
-            arrayOf(getString(R.string.flash_off), getString(R.string.flash_on)),
-            0
-        )
+        setSpinner(scanMode, arrayOf(getString(R.string.scan_mode_manual), getString(R.string.scan_mode_auto)), 0)
+        setSpinner(recognitionMode, arrayOf(getString(R.string.recognition_number), getString(R.string.recognition_barcode), getString(R.string.recognition_both)), 0)
+        setSpinner(numberScanMode, arrayOf(getString(R.string.number_scan_simple), getString(R.string.number_scan_smart)), 1)
+        setSpinner(scanQuality, arrayOf(getString(R.string.quality_standard), getString(R.string.quality_precise), getString(R.string.quality_max)), 2)
+        setSpinner(defaultFlash, arrayOf(getString(R.string.flash_off), getString(R.string.flash_on)), 0)
+
         val windowSeconds = intArrayOf(3, 5, 8, 10)
-        setSpinner(
-            scanWindow,
-            windowSeconds.map { getString(R.string.scan_window_value, it) }.toTypedArray(),
-            1
-        )
+        setSpinner(scanWindow, windowSeconds.map { getString(R.string.scan_window_value, it) }.toTypedArray(), 1)
+
         val stableOptions = intArrayOf(2, 3, 4, 5)
-        setSpinner(
-            stableReads,
-            stableOptions.map { getString(R.string.stable_reads_value, it) }.toTypedArray(),
-            1
-        )
+        setSpinner(stableReads, stableOptions.map { getString(R.string.stable_reads_value, it) }.toTypedArray(), 1)
     }
 
     private fun configureNumberPickers() {
@@ -226,7 +188,6 @@ class SettingsActivity : AppCompatActivity() {
 
         minDigits.value = settings.minDigits
         maxDigits.value = settings.maxDigits
-        autoZoom.isChecked = settings.smartZoom
         autoFocus.isChecked = settings.autoFocus
         duplicateCheck.isChecked = settings.duplicateCheck
         haptic.isChecked = settings.haptic
@@ -260,7 +221,8 @@ class SettingsActivity : AppCompatActivity() {
         }
         val windows = intArrayOf(3, 5, 8, 10)
         val stable = intArrayOf(2, 3, 4, 5)
-        val newSettings = AppSettings(
+        
+        val newSettings = settings.copy(
             scanMode = if (scanMode.selectedItemPosition == 1) ScanMode.AUTO else ScanMode.MANUAL,
             recognitionMode = when (recognitionMode.selectedItemPosition) {
                 1 -> RecognitionMode.BARCODE
@@ -270,12 +232,10 @@ class SettingsActivity : AppCompatActivity() {
             numberScanMode = if (numberScanMode.selectedItemPosition == 1) NumberScanMode.SMART else NumberScanMode.SIMPLE,
             minDigits = minDigits.value,
             maxDigits = maxDigits.value,
-            requireBoth = true,
             scanQuality = scanQuality.selectedItemPosition.coerceIn(0, 2),
             stableReads = stable[stableReads.selectedItemPosition.coerceIn(0, stable.lastIndex)],
             manualScanWindowSec = windows[scanWindow.selectedItemPosition.coerceIn(0, windows.lastIndex)],
             flashMode = if (defaultFlash.selectedItemPosition == 1) 1 else 0,
-            smartZoom = autoZoom.isChecked,
             autoFocus = autoFocus.isChecked,
             haptic = haptic.isChecked,
             sound = sound.isChecked,
