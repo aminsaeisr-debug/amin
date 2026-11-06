@@ -92,12 +92,8 @@
                     </LinearLayout>
                     <TextView android:textAppearance="@style/TextAppearance.SeedMas.SectionHelper" android:text="@string/number_length_help" />
 
-                    <com.google.android.material.materialswitch.MaterialSwitch
-                        android:id="@+id/autoZoom"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="@string/auto_zoom" />
-                    <TextView android:textAppearance="@style/TextAppearance.SeedMas.SectionHelper" android:text="@string/auto_zoom_help" />
+                    <!-- 👇 سوییچ زوم خودکار (autoZoom) از اینجا حذف شد -->
+
                     <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/autoFocus"
                         android:layout_width="match_parent"
