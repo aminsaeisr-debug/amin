@@ -71,6 +71,11 @@
                     <Spinner android:id="@+id/scanQuality" android:layout_width="match_parent" android:layout_height="48dp" />
                     <TextView style="@style/SettingsLabel" android:text="@string/scan_window_label" />
                     <Spinner android:id="@+id/scanWindow" android:layout_width="match_parent" android:layout_height="48dp" />
+                    
+                    <!-- 👇 منوی زمان ثبت خودکار اضافه شد -->
+                    <TextView style="@style/SettingsLabel" android:text="زمان ثبت خودکار (ثانیه)" />
+                    <Spinner android:id="@+id/autoSaveDelay" android:layout_width="match_parent" android:layout_height="48dp" />
+
                     <TextView style="@style/SettingsLabel" android:text="@string/stable_reads_label" />
                     <Spinner android:id="@+id/stableReads" android:layout_width="match_parent" android:layout_height="48dp" />
 
@@ -91,8 +96,6 @@
                         <NumberPicker android:id="@+id/maxDigits" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" />
                     </LinearLayout>
                     <TextView android:textAppearance="@style/TextAppearance.SeedMas.SectionHelper" android:text="@string/number_length_help" />
-
-                    <!-- 👇 سوییچ زوم خودکار (autoZoom) از اینجا حذف شد -->
 
                     <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/autoFocus"
