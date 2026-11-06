@@ -1,4 +1,4 @@
- package com.srooyesh.seedcounter
+package com.srooyesh.seedcounter
 
 import android.content.ContentValues
 import android.content.Context
@@ -56,13 +56,6 @@ class SeedDatabase private constructor(context: Context) : SQLiteOpenHelper(
     DB_NAME,
     null,
     DB_VERSION
-// در کلاس SeedDatabase:
-    fun deleteRecord(recordId: Long) {
-        writableDatabase.delete("records", "id=?", arrayOf(recordId.toString()))
-    }
-
-// در کلاس SeedRepository (پایین‌تر):
-    fun deleteRecord(recordId: Long) = db.deleteRecord(recordId)
 ) {
     init {
         setWriteAheadLoggingEnabled(true)
@@ -374,6 +367,11 @@ class SeedDatabase private constructor(context: Context) : SQLiteOpenHelper(
         return sessions to records
     }
 
+    // 👇 تابع حذف تک‌تک رکوردها اینجا قرار گرفت
+    fun deleteRecord(recordId: Long) {
+        writableDatabase.delete("records", "id=?", arrayOf(recordId.toString()))
+    }
+
     fun deleteAll() {
         writableDatabase.transaction {
             execSQL("DELETE FROM records")
@@ -451,6 +449,9 @@ class SeedRepository(context: Context) {
         val jalali = PersianDate.today()
         db.addRecord(sessionId, number, barcode, gregorian, jalali, time)
     }
+
+    // 👇 تابع واسطه حذف تک‌تک رکوردها اینجا قرار گرفت
+    fun deleteRecord(recordId: Long) = db.deleteRecord(recordId)
 
     fun getAllRows(): List<ExportRow> = db.getAllRows()
     fun searchHistory(query: String): List<HistoryRow> = db.searchHistory(query)
