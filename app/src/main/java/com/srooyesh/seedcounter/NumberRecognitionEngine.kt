@@ -5,7 +5,6 @@ import androidx.camera.core.ImageProxy
 import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.barcode.ZoomSuggestionOptions
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.Text
@@ -19,38 +18,19 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Real-time recognition engine. CameraX YUV frames go directly to ML Kit, while
- * the exact visual ROI is mapped through the CameraX cropRect/ViewPort.
+ * Real-time recognition engine. CameraX YUV frames go directly to ML Kit.
+ * (Zoom control has been moved to CameraActivity for manual pinch-to-zoom).
  */
-class NumberRecognitionEngine(
-    private val smartZoom: Boolean = true,
-    private val maxZoomRatio: Float = 1f,
-    private val currentZoomRatio: (() -> Float)? = null,
-    private val applyZoom: ((Float) -> Boolean)? = null
-) {
+class NumberRecognitionEngine {
     data class Result(val number: String = "", val barcode: String = "", val numberDisplay: String = number)
 
     private val barcodeScanner: BarcodeScanner
     private val textRecognizer: TextRecognizer
-    private var lastZoomAt = 0L
-    private var zoomAttempts = 0
 
     init {
         val builder = BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS)
-        if (smartZoom && applyZoom != null && maxZoomRatio > 1f) {
-            builder.setZoomSuggestionOptions(
-                ZoomSuggestionOptions.Builder { ratio -> applyZoom.invoke(ratio) }
-                    .setMaxSupportedZoomRatio(maxZoomRatio)
-                    .build()
-            )
-        }
         barcodeScanner = BarcodeScanning.getClient(builder.build())
         textRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-    }
-
-    fun resetZoomAssist() {
-        lastZoomAt = 0L
-        zoomAttempts = 0
     }
 
     fun process(
@@ -85,7 +65,6 @@ class NumberRecognitionEngine(
             cropRectRaw = proxy.cropRect,
             rotationDegrees = rotation
         )
-        val rotatedHeight = if (rotation % 180 == 0) proxy.height else proxy.width
 
         val needNumber = mode == RecognitionMode.NUMBER || mode == RecognitionMode.BOTH
         val needBarcode = mode == RecognitionMode.BARCODE || mode == RecognitionMode.BOTH
@@ -116,9 +95,6 @@ class NumberRecognitionEngine(
                     val candidate = chooseBestNumber(text, roi, minDigits, maxDigits, numberScanMode)
                     number = candidate?.value.orEmpty()
                     numberDisplay = candidate?.displayValue ?: number
-                    if (smartZoom && number.isBlank()) {
-                        maybeSuggestZoom(text, roi, rotatedHeight)
-                    }
                 }
                 .addOnFailureListener { number = "" }
                 .addOnCompleteListener { finish() }
@@ -190,28 +166,6 @@ class NumberRecognitionEngine(
         val dx = abs(boxCx - roiCx) / max(1f, roi.width().toFloat())
         val dy = abs(boxCy - roiCy) / max(1f, roi.height().toFloat())
         return 1f - (dx + dy).coerceAtMost(1f)
-    }
-
-    private fun maybeSuggestZoom(text: Text, roi: Rect, imageHeight: Int) {
-        if (!smartZoom || applyZoom == null || maxZoomRatio <= 1f || zoomAttempts >= 3) return
-        val now = android.os.SystemClock.elapsedRealtime()
-        if (now - lastZoomAt < 900L) return
-
-        val hasSmallDigitLine = text.textBlocks.flatMap { it.lines }.any { line ->
-            val box = line.boundingBox ?: return@any false
-            if (!intersectsRoi(box, roi)) return@any false
-            val digits = NumberCandidateExtractor.normalizeCharacters(line.text).count(Char::isDigit)
-            digits >= 2 && (box.height().toFloat() / max(1, imageHeight)) < 0.14f
-        }
-        if (!hasSmallDigitLine) return
-
-        val current = (currentZoomRatio?.invoke() ?: 1f).coerceAtLeast(1f)
-        val target = (current * 1.28f).coerceAtMost(maxZoomRatio)
-        if (target <= current + 0.05f) return
-        if (applyZoom(target)) {
-            lastZoomAt = now
-            zoomAttempts++
-        }
     }
 
     private fun intersectsRoi(box: Rect?, roi: Rect): Boolean = box?.let { Rect.intersects(it, roi) } == true
