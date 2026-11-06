@@ -29,8 +29,9 @@ data class AppSettings(
     val scanQuality: Int = 2,
     val stableReads: Int = 3,
     val manualScanWindowSec: Int = 5,
+    /** زمان انتظار برای ثبت خودکار در دوربین (به ثانیه) */
+    val autoSaveDelaySec: Int = 3,
     val flashMode: Int = 0,
-    /** ذخیره آخرین میزان زوم دستی کاربر (جایگزین smartZoom شد) */
     val manualZoomRatio: Float = 1.0f,
     val autoFocus: Boolean = true,
     val haptic: Boolean = true,
@@ -59,6 +60,7 @@ data class AppSettings(
             scanQuality = scanQuality.coerceIn(0, 2),
             stableReads = stableReads.coerceIn(2, 5),
             manualScanWindowSec = manualScanWindowSec.coerceIn(3, 10),
+            autoSaveDelaySec = autoSaveDelaySec.coerceIn(1, 10),
             flashMode = flashMode.coerceIn(0, 1),
             manualZoomRatio = manualZoomRatio.coerceAtLeast(1.0f),
             scanFrameWidthPct = scanFrameWidthPct.coerceIn(56, 96),
@@ -86,6 +88,7 @@ class SettingsStore(context: Context) {
             scanQuality = prefs.getInt("scan_quality", 2).coerceIn(0, 2),
             stableReads = prefs.getInt("stable_reads", 3).coerceIn(2, 5),
             manualScanWindowSec = prefs.getInt("manual_scan_window_sec", 5).coerceIn(3, 10),
+            autoSaveDelaySec = prefs.getInt("auto_save_delay_sec", 3),
             flashMode = prefs.getInt("flash_mode", 0).coerceIn(0, 1),
             manualZoomRatio = prefs.getFloat("manual_zoom_ratio", 1.0f),
             autoFocus = prefs.getBoolean("auto_focus", true),
@@ -120,8 +123,9 @@ class SettingsStore(context: Context) {
             putInt("scan_quality", s.scanQuality)
             putInt("stable_reads", s.stableReads)
             putInt("manual_scan_window_sec", s.manualScanWindowSec)
+            putInt("auto_save_delay_sec", s.autoSaveDelaySec)
             putInt("flash_mode", s.flashMode)
-            putFloat("manual_zoom_ratio", s.manualZoomRatio) // 👈 ذخیره زوم دستی
+            putFloat("manual_zoom_ratio", s.manualZoomRatio)
             putBoolean("auto_focus", s.autoFocus)
             putBoolean("haptic", s.haptic)
             putBoolean("sound", s.sound)
