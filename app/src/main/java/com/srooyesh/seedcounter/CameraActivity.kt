@@ -10,6 +10,7 @@ import android.os.SystemClock
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.HapticFeedbackConstants
+import android.view.ScaleGestureDetector
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
@@ -50,6 +51,7 @@ class CameraActivity : AppCompatActivity() {
         private const val AUTO_COOLDOWN_MS = 900L
         private const val BOTH_PAIR_WINDOW_MS = 2500L
         private const val WATCHDOG_MS = 8000L
+        private const val AUTO_SAVE_DELAY_MS = 3000L // 👈 تایمر ۳ ثانیه‌ای ثبت خودکار
     }
 
     private val preview by lazy { findViewById<PreviewView>(R.id.preview) }
@@ -62,18 +64,22 @@ class CameraActivity : AppCompatActivity() {
     private val barcodeState by lazy { findViewById<TextView>(R.id.barcodeState) }
     private val resultPanel by lazy { findViewById<View>(R.id.resultPanel) }
     private val bottomControls by lazy { findViewById<View>(R.id.bottomControls) }
+    private val topBar by lazy { findViewById<View>(R.id.topBar) } // 👈 برای مخفی کردن
     private val confirmButton by lazy { findViewById<Button>(R.id.confirm) }
     private val retryButton by lazy { findViewById<Button>(R.id.retry) }
     private val scanButton by lazy { findViewById<Button>(R.id.scanNow) }
     private val modeSwitch by lazy { findViewById<MaterialSwitch>(R.id.modeSwitch) }
     private val flashSwitch by lazy { findViewById<MaterialSwitch>(R.id.flashSwitch) }
     private val countView by lazy { findViewById<TextView>(R.id.cameraCount) }
+    private val autoSaveTimerText by lazy { findViewById<TextView>(R.id.autoSaveTimerText) }
 
     private val executor = Executors.newSingleThreadExecutor()
     private val destroyed = AtomicBoolean(false)
     private val settingsStore by lazy { SettingsStore(this) }
     private val repo by lazy { SeedRepository(this) }
     private lateinit var feedback: FeedbackController
+    private var scaleGestureDetector: ScaleGestureDetector? = null
+    private var autoSaveCountdown: CountDownTimer? = null
 
     @Volatile private var settings = AppSettings()
     @Volatile private var scanBusy = false
@@ -137,7 +143,7 @@ class CameraActivity : AppCompatActivity() {
             settings = settings.copy(scanMode = newMode).sanitized()
             settingsStore.save(settings)
             updateCameraUi()
-            if (newMode == ScanMode.AUTO) startScanCycle(false) else stopScan()
+            if (newMode == ScanMode.AUTO) startScanCycle() else stopScan()
         }
         flashSwitch.setOnCheckedChangeListener { _, checked ->
             if (syncingControls) return@setOnCheckedChangeListener
@@ -154,7 +160,7 @@ class CameraActivity : AppCompatActivity() {
             updateScanRectSnapshot()
             updateFrameSize()
         }
-        findViewById<ImageButton>(R.id.exitCamera).setOnClickListener { finish() }
+        findViewById<ImageButton>(R.id.exitCamera).setOnClickListener { onBackPressed() } // 👈 بک هوشمند
 
         scanOverlay.onFrameChangedListener = ScanOverlayView.OnFrameChangedListener { width, height, finished ->
             settings = settings.copy(
@@ -166,10 +172,21 @@ class CameraActivity : AppCompatActivity() {
             if (finished) settingsStore.save(settings)
         }
 
-        preview.setOnTouchListener { view, event ->
-            if (event.actionMasked == android.view.MotionEvent.ACTION_UP && settings.autoFocus) {
+        // 🚀 راه‌اندازی سیستم زوم دستی با دو انگشت
+        scaleGestureDetector = ScaleGestureDetector(this, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            override fun onScale(detector: ScaleGestureDetector): Boolean {
+                val cam = camera ?: return false
+                val state = cam.cameraInfo.zoomState.value ?: return false
+                val newZoom = (state.zoomRatio * detector.scaleFactor).coerceIn(state.minZoomRatio, state.maxZoomRatio)
+                cam.cameraControl.setZoomRatio(newZoom)
+                return true
+            }
+        })
+
+        preview.setOnTouchListener { _, event ->
+            val isScaling = scaleGestureDetector?.onTouchEvent(event) == true
+            if (!isScaling && event.actionMasked == android.view.MotionEvent.ACTION_UP && settings.autoFocus) {
                 focusAt(event.x, event.y)
-                view.performClick()
             }
             true
         }
@@ -178,7 +195,7 @@ class CameraActivity : AppCompatActivity() {
         detectedBarcode.addTextChangedListener(simpleWatcher())
         confirmButton.setOnClickListener { savePending() }
         retryButton.setOnClickListener { clearPendingAndRetry() }
-        scanButton.setOnClickListener { startScanCycle(true) }
+        scanButton.setOnClickListener { startScanCycle() }
 
         lifecycleScope.launch {
             localCount = withContext(Dispatchers.IO) { repo.getRecordCount(sessionId) }
@@ -201,6 +218,25 @@ class CameraActivity : AppCompatActivity() {
         reloadSettingsAfterReturn()
     }
 
+    // 💾 ذخیره آخرین میزان زوم هنگام خروج از دوربین
+    override fun onPause() {
+        super.onPause()
+        camera?.cameraInfo?.zoomState?.value?.zoomRatio?.let { currentZoom ->
+            settings = settings.copy(manualZoomRatio = currentZoom)
+            settingsStore.save(settings)
+        }
+    }
+
+    // 🔙 بک هوشمند: اگر نتیجه‌ای روی صفحه بود، اول ثبت کن بعد خارج شو
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() {
+        if (resultPanel.visibility == View.VISIBLE && (pendingNumber.isNotBlank() || pendingBarcode.isNotBlank())) {
+            savePending { finish() }
+        } else {
+            super.onBackPressed()
+        }
+    }
+
     private fun reloadSettingsAfterReturn() {
         val previous = settings
         settings = settingsStore.get()
@@ -208,15 +244,13 @@ class CameraActivity : AppCompatActivity() {
         updateScanRectSnapshot()
         updateCameraUi()
         val provider = cameraProvider
-        val cameraNeedsRebind = previous.scanQuality != settings.scanQuality || previous.smartZoom != settings.smartZoom
+        val cameraNeedsRebind = previous.scanQuality != settings.scanQuality
         if (provider != null && cameraNeedsRebind) {
-            preview.post {
-                runCatching { bindCamera(provider, CameraSelector.DEFAULT_BACK_CAMERA) }
-            }
+            preview.post { runCatching { bindCamera(provider, CameraSelector.DEFAULT_BACK_CAMERA) } }
         } else {
             camera?.cameraControl?.enableTorch(settings.flashMode == 1)
             if (settings.autoFocus) focusCenter()
-            if (settings.scanMode == ScanMode.AUTO && !scanArmed) startScanCycle(false)
+            if (settings.scanMode == ScanMode.AUTO && !scanArmed) startScanCycle()
         }
     }
 
@@ -250,9 +284,7 @@ class CameraActivity : AppCompatActivity() {
                 if (!provider.hasCamera(selector)) throw IllegalStateException("back camera unavailable")
 
                 preview.post {
-                    try {
-                        bindCamera(provider, selector)
-                    } catch (_: Exception) {
+                    try { bindCamera(provider, selector) } catch (_: Exception) {
                         toast(getString(R.string.camera_unavailable))
                         finish()
                     }
@@ -279,12 +311,7 @@ class CameraActivity : AppCompatActivity() {
             else -> android.util.Size(1920, 1080)
         }
         val resolutionSelector = ResolutionSelector.Builder()
-            .setResolutionStrategy(
-                ResolutionStrategy(
-                    resolution,
-                    ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER
-                )
-            )
+            .setResolutionStrategy(ResolutionStrategy(resolution, ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER))
             .build()
         val analyzer = ImageAnalysis.Builder()
             .setResolutionSelector(resolutionSelector)
@@ -302,17 +329,16 @@ class CameraActivity : AppCompatActivity() {
 
         analyzer.setAnalyzer(executor) { proxy -> analyze(proxy) }
         camera = provider.bindToLifecycle(this, selector, group)
-        val maxZoom = camera?.cameraInfo?.zoomState?.value?.maxZoomRatio ?: 1f
+        
+        // 🎯 اعمال زومی که کاربر قبلا تنظیم کرده بود
+        val zoomState = camera?.cameraInfo?.zoomState?.value
+        if (zoomState != null) {
+            val initialZoom = settings.manualZoomRatio.coerceIn(zoomState.minZoomRatio, zoomState.maxZoomRatio)
+            camera?.cameraControl?.setZoomRatio(initialZoom)
+        }
+
         engine?.close()
-        engine = NumberRecognitionEngine(
-            smartZoom = settings.smartZoom,
-            maxZoomRatio = maxZoom,
-            currentZoomRatio = { camera?.cameraInfo?.zoomState?.value?.zoomRatio ?: 1f },
-            applyZoom = { ratio ->
-                camera?.cameraControl?.setZoomRatio(ratio)
-                true
-            }
-        )
+        engine = NumberRecognitionEngine() // دیگر پارامتر زوم خودکار نمی‌گیرد
 
         camera?.cameraControl?.enableTorch(settings.flashMode == 1)
         if (settings.autoFocus) focusCenter()
@@ -320,39 +346,29 @@ class CameraActivity : AppCompatActivity() {
         runOnUiThread {
             updateScanRectSnapshot()
             updateCameraUi()
-            if (settings.scanMode == ScanMode.AUTO) startScanCycle(false)
+            if (settings.scanMode == ScanMode.AUTO) startScanCycle()
         }
     }
 
     private fun updateCameraUi() {
-        modeSwitch.text = getString(
-            if (settings.scanMode == ScanMode.AUTO) R.string.mode_auto else R.string.mode_manual
-        )
+        modeSwitch.text = getString(if (settings.scanMode == ScanMode.AUTO) R.string.mode_auto else R.string.mode_manual)
         findViewById<android.widget.TextView>(R.id.modeLabel).text = getString(
             R.string.camera_mode_summary,
             if (settings.scanMode == ScanMode.AUTO) getString(R.string.mode_auto) else getString(R.string.mode_manual),
             if (settings.numberScanMode == NumberScanMode.SMART) getString(R.string.number_scan_smart_short) else getString(R.string.number_scan_simple_short)
         )
-        scanButton.text = getString(
-            if (settings.scanMode == ScanMode.AUTO) R.string.scan_again else R.string.scan_now
-        )
+        scanButton.text = getString(if (settings.scanMode == ScanMode.AUTO) R.string.scan_again else R.string.scan_now)
         syncingControls = true
         modeSwitch.isChecked = settings.scanMode == ScanMode.AUTO
         flashSwitch.isChecked = settings.flashMode == 1
         syncingControls = false
-        status.text = getString(
-            if (settings.scanMode == ScanMode.AUTO) R.string.auto_ready else R.string.camera_ready_manual
-        )
+        status.text = getString(if (settings.scanMode == ScanMode.AUTO) R.string.auto_ready else R.string.camera_ready_manual)
         updateFrameSize()
         applyRecognitionVisibility()
     }
 
     private fun updateFrameSize() {
-        frameSize.text = getString(
-            R.string.frame_size_value,
-            scanOverlay.getWidthPercent(),
-            scanOverlay.getHeightPercent()
-        )
+        frameSize.text = getString(R.string.frame_size_value, scanOverlay.getWidthPercent(), scanOverlay.getHeightPercent())
     }
 
     private fun applyRecognitionVisibility() {
@@ -372,23 +388,17 @@ class CameraActivity : AppCompatActivity() {
         val currentCamera = camera ?: return
         if (!settings.autoFocus || preview.width <= 0 || preview.height <= 0) return
         runCatching {
-            val point = preview.meteringPointFactory.createPoint(
-                x.coerceIn(0f, preview.width.toFloat()),
-                y.coerceIn(0f, preview.height.toFloat())
-            )
-            val action = androidx.camera.core.FocusMeteringAction.Builder(point)
-                .setAutoCancelDuration(2, TimeUnit.SECONDS)
-                .build()
+            val point = preview.meteringPointFactory.createPoint(x.coerceIn(0f, preview.width.toFloat()), y.coerceIn(0f, preview.height.toFloat()))
+            val action = androidx.camera.core.FocusMeteringAction.Builder(point).setAutoCancelDuration(2, TimeUnit.SECONDS).build()
             currentCamera.cameraControl.startFocusAndMetering(action)
         }
     }
 
-    private fun startScanCycle(manualRequest: Boolean) {
+    private fun startScanCycle() {
         if (destroyed.get() || scanBusy) return
         cooldownUntil = 0L
         lastFrameAt = 0L
         resetStability()
-        engine?.resetZoomAssist()
         announcedNumberFound = false
         announcedBarcodeRequired = false
         announcedNumberRequired = false
@@ -396,6 +406,9 @@ class CameraActivity : AppCompatActivity() {
         pendingNumber = ""
         pendingBarcode = ""
         resultPanel.visibility = View.GONE
+        topBar.visibility = View.VISIBLE
+        bottomControls.visibility = View.VISIBLE
+        autoSaveCountdown?.cancel()
         detectedNumber.setText("")
         detectedBarcode.setText("")
         scanArmed = true
@@ -406,10 +419,7 @@ class CameraActivity : AppCompatActivity() {
         if (settings.scanMode == ScanMode.MANUAL) {
             manualScanCountdown = object : CountDownTimer(settings.manualScanWindowSec * 1000L, 100) {
                 override fun onTick(millisUntilFinished: Long) {
-                    status.text = getString(
-                        R.string.scanning_now_seconds,
-                        String.format(Locale.US, "%.1f", millisUntilFinished / 1000.0)
-                    )
+                    status.text = getString(R.string.scanning_now_seconds, String.format(Locale.US, "%.1f", millisUntilFinished / 1000.0))
                 }
                 override fun onFinish() {
                     if (destroyed.get()) return
@@ -440,13 +450,11 @@ class CameraActivity : AppCompatActivity() {
             scanBusySince = 0L
             scanGeneration++
         }
-        if (scanBusy) {
-            proxy.close()
-            return
-        }
-        if (settings.scanMode == ScanMode.MANUAL && now - scanStartedAt > settings.manualScanWindowSec * 1000L) {
-            scanArmed = false
-            runOnUiThread { status.text = getString(R.string.scan_window_finished) }
+        if (scanBusy || (settings.scanMode == ScanMode.MANUAL && now - scanStartedAt > settings.manualScanWindowSec * 1000L)) {
+            if (settings.scanMode == ScanMode.MANUAL && now - scanStartedAt > settings.manualScanWindowSec * 1000L) {
+                scanArmed = false
+                runOnUiThread { status.text = getString(R.string.scan_window_finished) }
+            }
             proxy.close()
             return
         }
@@ -473,30 +481,13 @@ class CameraActivity : AppCompatActivity() {
 
         try {
             localEngine.process(
-                proxy = proxy,
-                scanRectPreview = roi,
-                previewWidth = preview.width,
-                previewHeight = preview.height,
-                mode = settings.recognitionMode,
-                numberScanMode = settings.numberScanMode,
-                minDigits = settings.minDigits,
-                maxDigits = settings.maxDigits,
-                onResult = { result ->
-                    if (generation == scanGeneration && !destroyed.get()) handleResult(result)
-                },
-                onComplete = {
-                    if (generation == scanGeneration) {
-                        scanBusy = false
-                        scanBusySince = 0L
-                    }
-                }
+                proxy, roi, preview.width, preview.height, settings.recognitionMode, settings.numberScanMode, settings.minDigits, settings.maxDigits,
+                onResult = { result -> if (generation == scanGeneration && !destroyed.get()) handleResult(result) },
+                onComplete = { if (generation == scanGeneration) { scanBusy = false; scanBusySince = 0L } }
             )
         } catch (_: Exception) {
             runCatching { proxy.close() }
-            if (generation == scanGeneration) {
-                scanBusy = false
-                scanBusySince = 0L
-            }
+            if (generation == scanGeneration) { scanBusy = false; scanBusySince = 0L }
         }
     }
 
@@ -509,19 +500,10 @@ class CameraActivity : AppCompatActivity() {
         if (settings.scanMode == ScanMode.AUTO) {
             val now = SystemClock.elapsedRealtime()
             if (number.isNotBlank()) {
-                if (number == stableNumber) stableNumberCount++ else {
-                    stableNumber = number
-                    stableNumberDisplay = numberDisplay
-                    stableNumberCount = 1
-                    stableNumberSince = now
-                }
+                if (number == stableNumber) stableNumberCount++ else { stableNumber = number; stableNumberDisplay = numberDisplay; stableNumberCount = 1; stableNumberSince = now }
             }
             if (barcode.isNotBlank()) {
-                if (barcode == stableBarcode) stableBarcodeCount++ else {
-                    stableBarcode = barcode
-                    stableBarcodeCount = 1
-                    stableBarcodeSince = now
-                }
+                if (barcode == stableBarcode) stableBarcodeCount++ else { stableBarcode = barcode; stableBarcodeCount = 1; stableBarcodeSince = now }
             }
 
             val required = settings.stableReads.coerceIn(2, 5)
@@ -530,8 +512,7 @@ class CameraActivity : AppCompatActivity() {
             val accepted = when (settings.recognitionMode) {
                 RecognitionMode.NUMBER -> numberStable
                 RecognitionMode.BARCODE -> barcodeStable
-                RecognitionMode.BOTH -> numberStable && barcodeStable &&
-                    kotlin.math.abs(stableNumberSince - stableBarcodeSince) <= BOTH_PAIR_WINDOW_MS
+                RecognitionMode.BOTH -> numberStable && barcodeStable && kotlin.math.abs(stableNumberSince - stableBarcodeSince) <= BOTH_PAIR_WINDOW_MS
             }
 
             if (!accepted) {
@@ -541,23 +522,15 @@ class CameraActivity : AppCompatActivity() {
                         when {
                             numberStable && !barcodeStable -> {
                                 status.text = getString(R.string.waiting_for_barcode_only)
-                                if (!announcedBarcodeRequired) {
-                                    announcedBarcodeRequired = true
-                                    feedback.speak(getString(R.string.voice_barcode_required), settings.voiceGuidance)
-                                }
+                                if (!announcedBarcodeRequired) { announcedBarcodeRequired = true; feedback.speak(getString(R.string.voice_barcode_required), settings.voiceGuidance) }
                             }
                             barcodeStable && !numberStable -> {
                                 status.text = getString(R.string.waiting_for_number_only)
-                                if (!announcedNumberRequired) {
-                                    announcedNumberRequired = true
-                                    feedback.speak(getString(R.string.voice_number_required), settings.voiceGuidance)
-                                }
+                                if (!announcedNumberRequired) { announcedNumberRequired = true; feedback.speak(getString(R.string.voice_number_required), settings.voiceGuidance) }
                             }
                             else -> status.text = getString(R.string.stabilizing_reading)
                         }
-                    } else if (stableNumberCount > 0 || stableBarcodeCount > 0) {
-                        status.text = getString(R.string.stabilizing_reading)
-                    }
+                    } else if (stableNumberCount > 0 || stableBarcodeCount > 0) status.text = getString(R.string.stabilizing_reading)
                 }
                 return
             }
@@ -594,6 +567,10 @@ class CameraActivity : AppCompatActivity() {
 
     private fun refreshResultPanel() {
         resultPanel.visibility = View.VISIBLE
+        // 👇 مخفی کردن منوها تا میدان دید باز شود
+        topBar.visibility = View.GONE
+        bottomControls.visibility = View.GONE
+
         detectedNumber.setText(pendingNumber)
         detectedBarcode.setText(pendingBarcode)
         detectedNumber.setSelection(detectedNumber.text.length)
@@ -601,6 +578,25 @@ class CameraActivity : AppCompatActivity() {
         numberState.text = if (pendingNumber.isBlank()) getString(R.string.not_found) else getString(R.string.found)
         barcodeState.text = if (pendingBarcode.isBlank()) getString(R.string.not_found) else getString(R.string.found)
         refreshConfirmState()
+        
+        // ⏱ شروع تایمر ثبت خودکار
+        startAutoSaveTimer()
+    }
+
+    private fun startAutoSaveTimer() {
+        autoSaveCountdown?.cancel()
+        autoSaveCountdown = object : CountDownTimer(AUTO_SAVE_DELAY_MS, 1000L) {
+            override fun onTick(millisUntilFinished: Long) {
+                val seconds = millisUntilFinished / 1000
+                autoSaveTimerText.text = "ثبت خودکار در $seconds ثانیه..."
+            }
+            override fun onFinish() {
+                if (!destroyed.get()) {
+                    autoSaveTimerText.text = "در حال ثبت..."
+                    savePending()
+                }
+            }
+        }.start()
     }
 
     private fun refreshConfirmState() {
@@ -620,7 +616,8 @@ class CameraActivity : AppCompatActivity() {
         RecognitionMode.BOTH -> number.length in settings.minDigits..settings.maxDigits && barcode.isNotBlank()
     }
 
-    private fun savePending() {
+    private fun savePending(onSaved: (() -> Unit)? = null) {
+        autoSaveCountdown?.cancel()
         val number = Storage.normalizePacketNumber(detectedNumber.text.toString())
         val barcode = Storage.normalizeBarcode(detectedBarcode.text.toString())
         if (!isReadyToConfirm(number, barcode)) {
@@ -631,9 +628,7 @@ class CameraActivity : AppCompatActivity() {
         }
 
         lifecycleScope.launch {
-            val result = withContext(Dispatchers.IO) {
-                repo.addRecord(sessionId, number, barcode, settings.duplicateCheck)
-            }
+            val result = withContext(Dispatchers.IO) { repo.addRecord(sessionId, number, barcode, settings.duplicateCheck) }
             if (result.isFailure) {
                 if (settings.sound) feedback.errorTone()
                 toast(result.exceptionOrNull()?.message ?: getString(R.string.save_error))
@@ -643,6 +638,8 @@ class CameraActivity : AppCompatActivity() {
             localCount++
             countView.text = getString(R.string.camera_count, localCount)
             resultPanel.visibility = View.GONE
+            topBar.visibility = View.VISIBLE
+            bottomControls.visibility = View.VISIBLE
             pendingNumber = ""
             pendingBarcode = ""
             resetStability()
@@ -650,26 +647,33 @@ class CameraActivity : AppCompatActivity() {
             if (settings.sound) feedback.successTone()
             feedback.speak(getString(R.string.voice_saved), settings.voiceGuidance)
 
-            if (settings.scanMode == ScanMode.AUTO) {
-                status.text = getString(R.string.saved_continue)
-                cooldownUntil = SystemClock.elapsedRealtime() + AUTO_COOLDOWN_MS
-                scanArmed = true
-                announcedNumberFound = false
+            if (onSaved != null) {
+                onSaved.invoke()
             } else {
-                status.text = getString(R.string.saved_press_scan)
-                scanArmed = false
+                if (settings.scanMode == ScanMode.AUTO) {
+                    status.text = getString(R.string.saved_continue)
+                    cooldownUntil = SystemClock.elapsedRealtime() + AUTO_COOLDOWN_MS
+                    scanArmed = true
+                    announcedNumberFound = false
+                } else {
+                    status.text = getString(R.string.saved_press_scan)
+                    scanArmed = false
+                }
             }
         }
     }
 
     private fun clearPendingAndRetry() {
+        autoSaveCountdown?.cancel()
         pendingNumber = ""
         pendingBarcode = ""
         detectedNumber.setText("")
         detectedBarcode.setText("")
         resultPanel.visibility = View.GONE
+        topBar.visibility = View.VISIBLE
+        bottomControls.visibility = View.VISIBLE
         manualScanCountdown?.cancel()
-        startScanCycle(true)
+        startScanCycle()
     }
 
     private fun resetStability() {
@@ -686,6 +690,7 @@ class CameraActivity : AppCompatActivity() {
         destroyed.set(true)
         scanGeneration++
         manualScanCountdown?.cancel()
+        autoSaveCountdown?.cancel()
         runCatching { cameraProvider?.unbindAll() }
         runCatching { analyzerShutdown() }
         runCatching { engine?.close() }
@@ -693,15 +698,8 @@ class CameraActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-    private fun analyzerShutdown() {
-        executor.shutdownNow()
-    }
-
+    private fun analyzerShutdown() { executor.shutdownNow() }
     private fun toast(message: String) = Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
 }
 
-/**
- * Converts a fractional value in [0.0, 1.0] to a whole percentage in [0, 100].
- * Example: 0.84f -> 84, 0.28f -> 28.
- */
 private fun Float.roundToIntSafe(): Int = (this * 100f).roundToInt().coerceIn(0, 100)
