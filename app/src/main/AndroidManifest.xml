@@ -33,6 +33,7 @@
         android:resizeableActivity="true"
         android:hardwareAccelerated="true"
         android:enableOnBackInvokedCallback="true"
+        android:fullBackupContent="@xml/backup_rules"
         tools:targetApi="33">
 
         <provider
