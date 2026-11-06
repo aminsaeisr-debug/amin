@@ -228,4 +228,70 @@ class SettingsActivity : AppCompatActivity() {
             R.id.dateGregorian -> "gregorian"
             else -> "both"
         }
-        val windows
+        val windows = intArrayOf(3, 5, 8, 10)
+        val autoSaveSeconds = intArrayOf(1, 2, 3, 4, 5, 6, 8, 10)
+        val stable = intArrayOf(2, 3, 4, 5)
+        
+        val newSettings = settings.copy(
+            scanMode = if (scanMode.selectedItemPosition == 1) ScanMode.AUTO else ScanMode.MANUAL,
+            recognitionMode = when (recognitionMode.selectedItemPosition) {
+                1 -> RecognitionMode.BARCODE
+                2 -> RecognitionMode.BOTH
+                else -> RecognitionMode.NUMBER
+            },
+            numberScanMode = if (numberScanMode.selectedItemPosition == 1) NumberScanMode.SMART else NumberScanMode.SIMPLE,
+            minDigits = minDigits.value,
+            maxDigits = maxDigits.value,
+            scanQuality = scanQuality.selectedItemPosition.coerceIn(0, 2),
+            stableReads = stable[stableReads.selectedItemPosition.coerceIn(0, stable.lastIndex)],
+            manualScanWindowSec = windows[scanWindow.selectedItemPosition.coerceIn(0, windows.lastIndex)],
+            autoSaveDelaySec = autoSaveSeconds[autoSaveDelay.selectedItemPosition.coerceIn(0, autoSaveSeconds.lastIndex)],
+            flashMode = if (defaultFlash.selectedItemPosition == 1) 1 else 0,
+            autoFocus = autoFocus.isChecked,
+            haptic = haptic.isChecked,
+            sound = sound.isChecked,
+            voiceGuidance = voiceGuidance.isChecked,
+            duplicateCheck = duplicateCheck.isChecked,
+            scanFrameWidthPct = frameWidth.value.roundToInt(),
+            scanFrameHeightPct = frameHeight.value.roundToInt(),
+            dateOutput = dateMode,
+            outRow = outRow.isChecked,
+            outVariety = outVariety.isChecked,
+            outCustomer = outCustomer.isChecked,
+            outNumber = outNumber.isChecked,
+            outBarcode = outBarcode.isChecked,
+            outJalali = true,
+            outGregorian = true,
+            outTime = outTime.isChecked,
+            outSession = outSession.isChecked
+        ).sanitized()
+
+        settingsStore.save(newSettings)
+        setResult(Activity.RESULT_OK)
+        finish()
+    }
+
+    private fun restoreBackup(uri: Uri) {
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    val json = contentResolver.openInputStream(uri)?.use { input ->
+                        BufferedReader(InputStreamReader(input, Charsets.UTF_8)).readText()
+                    } ?: error(getString(R.string.restore_error))
+                    SeedRepository(this@SettingsActivity).importBackupJson(json).getOrThrow()
+                }
+            }
+            if (result.isSuccess) toast(getString(R.string.restore_done, result.getOrThrow()))
+            else toast(result.exceptionOrNull()?.message ?: getString(R.string.restore_error))
+        }
+    }
+
+    private fun setSpinner(spinner: Spinner, values: Array<String>, selected: Int) {
+        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, values)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinner.adapter = adapter
+        spinner.setSelection(selected.coerceIn(0, values.lastIndex))
+    }
+
+    private fun toast(message: String) = Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+}
