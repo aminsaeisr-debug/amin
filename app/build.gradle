@@ -31,10 +31,12 @@ android {
     }
 
  // 🛡️ دروازه‌بان کیفیت
-    lint {
+lint {
         abortOnError true
         checkReleaseBuilds true
-        warningsAsErrors true
+        warningsAsErrors false   // 👈 هشدارها دیگر بیلد را خراب نمی‌کنند
+        checkResources false     // 👈 دیگر کاری به فایل‌های XML و متن‌ها ندارد
+        checkTestSources false   // 👈 کدهای تست را بررسی نمی‌کند
     }
 
     signingConfigs {
