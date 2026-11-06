@@ -4,67 +4,40 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 
-/** Scan trigger behavior. */
 enum class ScanMode(val key: String) {
-    MANUAL("manual"),
-    AUTO("auto");
-
-    companion object {
-        fun fromStored(value: String?): ScanMode = entries.firstOrNull { it.key == value } ?: MANUAL
-    }
+    MANUAL("manual"), AUTO("auto");
+    companion object { fun fromStored(value: String?): ScanMode = entries.firstOrNull { it.key == value } ?: MANUAL }
 }
 
-/** What the camera is expected to recognize. */
 enum class RecognitionMode(val key: String) {
-    NUMBER("number"),
-    BARCODE("barcode"),
-    BOTH("both");
-
-    companion object {
-        fun fromStored(value: String?): RecognitionMode = entries.firstOrNull { it.key == value } ?: NUMBER
-    }
+    NUMBER("number"), BARCODE("barcode"), BOTH("both");
+    companion object { fun fromStored(value: String?): RecognitionMode = entries.firstOrNull { it.key == value } ?: NUMBER }
 }
 
-
-/** How aggressively the number OCR combines separated/irregular digit groups. */
 enum class NumberScanMode(val key: String) {
-    SIMPLE("simple"),
-    SMART("smart");
-
-    companion object {
-        fun fromStored(value: String?): NumberScanMode = entries.firstOrNull { it.key == value } ?: SIMPLE
-    }
+    SIMPLE("simple"), SMART("smart");
+    companion object { fun fromStored(value: String?): NumberScanMode = entries.firstOrNull { it.key == value } ?: SIMPLE }
 }
 
-/** One versionable model for all user-adjustable behavior. */
 data class AppSettings(
     val scanMode: ScanMode = ScanMode.MANUAL,
     val recognitionMode: RecognitionMode = RecognitionMode.NUMBER,
-    /** Number grouping intelligence: SIMPLE reads contiguous digits; SMART joins irregular groups and recognizes separators. */
     val numberScanMode: NumberScanMode = NumberScanMode.SIMPLE,
     val minDigits: Int = 4,
     val maxDigits: Int = 6,
-    /** Kept for backup compatibility; BOTH mode still requires both values. */
     val requireBoth: Boolean = true,
-    /** 0=standard, 1=precise, 2=max accuracy. */
     val scanQuality: Int = 2,
-    /** Number of consecutive identical detections required in AUTO mode. */
     val stableReads: Int = 3,
-    /** Recognition window in manual mode. */
     val manualScanWindowSec: Int = 5,
-    /** 0=off, 1=on. */
     val flashMode: Int = 0,
-    /** Smart zoom may be driven by ML Kit / camera assist. */
-    val smartZoom: Boolean = true,
-    /** Auto-focus is enabled at the scan center and on tap-to-focus. */
+    /** ذخیره آخرین میزان زوم دستی کاربر (جایگزین smartZoom شد) */
+    val manualZoomRatio: Float = 1.0f,
     val autoFocus: Boolean = true,
     val haptic: Boolean = true,
     val sound: Boolean = true,
     val voiceGuidance: Boolean = true,
     val duplicateCheck: Boolean = true,
-    /** Scan frame width as a percentage of the visible PreviewView. */
     val scanFrameWidthPct: Int = 84,
-    /** Scan frame height as a percentage of the visible PreviewView. */
     val scanFrameHeightPct: Int = 28,
     val dateOutput: String = "both",
     val outRow: Boolean = true,
@@ -87,6 +60,7 @@ data class AppSettings(
             stableReads = stableReads.coerceIn(2, 5),
             manualScanWindowSec = manualScanWindowSec.coerceIn(3, 10),
             flashMode = flashMode.coerceIn(0, 1),
+            manualZoomRatio = manualZoomRatio.coerceAtLeast(1.0f),
             scanFrameWidthPct = scanFrameWidthPct.coerceIn(56, 96),
             scanFrameHeightPct = scanFrameHeightPct.coerceIn(12, 58),
             dateOutput = dateOutput.lowercase().let { if (it in setOf("jalali", "gregorian", "both")) it else "both" }
@@ -101,8 +75,7 @@ class SettingsStore(context: Context) {
     fun get(): AppSettings {
         val min = prefs.getInt("min_digits", 4).coerceIn(2, 16)
         val max = prefs.getInt("max_digits", 6).coerceIn(min, 16)
-        // Keep the old preference key as a fallback for existing installations.
-        val legacySmartZoom = prefs.getBoolean("barcode_auto_zoom", true)
+        
         return AppSettings(
             scanMode = ScanMode.fromStored(prefs.getString("scan_mode", ScanMode.MANUAL.key)),
             recognitionMode = RecognitionMode.fromStored(prefs.getString("recognition_mode", RecognitionMode.NUMBER.key)),
@@ -114,7 +87,7 @@ class SettingsStore(context: Context) {
             stableReads = prefs.getInt("stable_reads", 3).coerceIn(2, 5),
             manualScanWindowSec = prefs.getInt("manual_scan_window_sec", 5).coerceIn(3, 10),
             flashMode = prefs.getInt("flash_mode", 0).coerceIn(0, 1),
-            smartZoom = prefs.getBoolean("smart_zoom", legacySmartZoom),
+            manualZoomRatio = prefs.getFloat("manual_zoom_ratio", 1.0f),
             autoFocus = prefs.getBoolean("auto_focus", true),
             haptic = prefs.getBoolean("haptic", true),
             sound = prefs.getBoolean("sound", true),
@@ -148,8 +121,7 @@ class SettingsStore(context: Context) {
             putInt("stable_reads", s.stableReads)
             putInt("manual_scan_window_sec", s.manualScanWindowSec)
             putInt("flash_mode", s.flashMode)
-            putBoolean("smart_zoom", s.smartZoom)
-            putBoolean("barcode_auto_zoom", s.smartZoom)
+            putFloat("manual_zoom_ratio", s.manualZoomRatio) // 👈 ذخیره زوم دستی
             putBoolean("auto_focus", s.autoFocus)
             putBoolean("haptic", s.haptic)
             putBoolean("sound", s.sound)
@@ -172,7 +144,6 @@ class SettingsStore(context: Context) {
 
     fun raw(): Map<String, *> = prefs.all.toMap()
 
-    /** Replaces known and unknown preference keys for forward-compatible backups. */
     fun replaceFromMap(map: Map<String, *>) {
         prefs.edit {
             clear()
