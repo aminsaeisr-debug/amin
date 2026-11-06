@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- جلوگیری از بکاپ‌گیری خودکار از دیتابیس و تنظیمات در اندروید ۱۱ و پایین‌تر -->
+    <exclude domain="database" path="." />
+    <exclude domain="sharedpref" path="." />
+</full-backup-content>
