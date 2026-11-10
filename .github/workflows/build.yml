@@ -34,7 +34,7 @@ jobs:
         run: ./gradlew --no-daemon lintDebug testDebugUnitTest --continue
       - name: Upload Lint Report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: lint-report
           path: app/build/reports/lint-results-debug.txt
@@ -100,7 +100,7 @@ jobs:
           sha256sum release/seed-mas-final.apk > release/SHA256SUMS.txt
           ls -lh release/
       - name: Upload Secured APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: seed-mas-apk
           path: release/*.apk
